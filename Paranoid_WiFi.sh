@@ -60,6 +60,8 @@ Var_easyrsa_key_org="Organization"
 Var_easyrsa_key_email="$(id -un)@${HOSTNAME}.local"
 Var_easyrsa_key_ou="OrganizationUnit"
 Var_easyrsa_key_name="EasyRSA"
+## Variables for executables
+Var_echo_exec_path="$(which echo)"
 ## Assigne default functions for handling messages,
 Func_check_args(){
 	_arr_input=( "${@}" )
@@ -228,7 +230,7 @@ Func_check_args(){
 			---*)
 				_extra_var="${_arg%=*}"
 				_extra_arg="${_arg#*=}"
-				Func_assign_arg "${_extra_var/---/}" "${_arg#*=}"
+				Func_assign_arg "${_extra_var/---/}" "${_extra_arg}"
 			;;
 			--help|help)
 				Func_message "# Func_check_args read variable [${_arg%=*}] with value [${_arg#*=}]" '2' '3'
@@ -280,7 +282,7 @@ Func_help(){
 	echo "# --ovpns-listen-port		Var_ovpns_listen_port=\"${Var_ovpns_listen_port}\""
 	echo "# --ovpns-route-ip		Var_ovpns_route_ip=\"${Var_ovpns_route_ip}\""
 	echo "# --ovpns-route-netmask		Var_ovpns_route_netmask=\"${Var_ovpns_route_netmask}\""
-	echo "# --ovpns-user			Var_ovpns_user=\"${Var_ovpns_user\""
+	echo "# --ovpns-user			Var_ovpns_user=\"${Var_ovpns_user}\""
 	echo "# --ovpns-group			Var_ovpns_group=\"${Var_ovpns_group}\""
 	echo "# --ovpns-ca-path			Var_ovpns_ca_path=\"${Var_ovpns_ca_path}\""
 	echo "# --ovpns-cert-path		Var_ovpns_cert_path=\"${Var_ovpns_cert_path}\""
@@ -313,9 +315,9 @@ Func_help(){
 Func_script_license_customizer(){
 	Func_message "## Salutations ${Var_script_current_user}, the following license" '0' '42'
 	Func_message "#  only applies to this script [${Var_script_title}]. Software external to but" '0' '42'
-	Func_message '#  used by [${Var_script_name}] are protected under their own licensing' '0' '42'
+	Func_message "#  used by [${Var_script_name}] are protected under their own licensing" '0' '42'
 	Func_message "#  usage agreements. The authors of this project assume **no** rights" '0' '42'
-	Func_message '#  to modify software licensing agreements external to [${Var_script_name}]' '0' '42'
+	Func_message "#  to modify software licensing agreements external to [${Var_script_name}]" '0' '42'
 	Func_message '## GNU AGPL v3 Notice start' '0' '42'
 	Func_message "# ${Var_script_name}, configurer/manager for chroot jailed OpenVPN servers." '0' '42'
 	Func_message "#  Copyright (C) 2016 ${Var_authors_username}" '0' '42'
@@ -438,6 +440,7 @@ EOF
 		cat >> "${Var_ovpns_config_path}" <<EOF
 push "dhcp-option DNS ${_dns_ip}"
 EOF
+	done
 	#Func_message "#  running: " '2' '3'
 	cat >> "${Var_ovpns_config_path}" <<EOF
 route ${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}
@@ -501,7 +504,7 @@ Func_main(){
 		Func_message "# ${Var_script_name} running: Func_check_args \"--help\"" '1' '2'
 		Func_check_args "--help"
 	else
-		Func_message "# ${Var_script_name} running: Func_check_args \"${_input[@]}\"" '1' '2'
+		Func_message "# ${Var_script_name} running: Func_check_args \"${_input[*]}\"" '1' '2'
 		Func_check_args "${_input[@]}"
 	fi
 	unset -v _input[@]
