@@ -11,12 +11,12 @@ else
 	exit 1
 fi
 if [ -e "${Var_main_script_name}" ]; then
-	echo "# ${Var_script_name} running: ${Var_main_script_name} --version"
-	${Var_main_script_name} --version
+	echo "# ${Var_script_name} running: ./${Var_main_script_name} --version"
+	./${Var_main_script_name} --version
 	_exit_status=$?
 	Func_check_exit_status "${_exit_status}" "${Var_main_script_name} --version"
-	echo "# ${Var_script_name} running: ${Var_main_script_name} --apt-check-depends-yn=\"yes\""
-	${Var_main_script_name} --apt-check-depends-yn="yes"
+	echo "# ${Var_script_name} running: ./${Var_main_script_name} --apt-check-depends-yn=\"yes\""
+	./${Var_main_script_name} --apt-check-depends-yn="yes"
 	_exit_status=$?
 	Func_check_exit_status "${_exit_status}" "${Var_main_script_name} --apt-check-depends-yn=\"yes\""
 else
