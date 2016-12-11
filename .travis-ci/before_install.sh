@@ -2,7 +2,7 @@
 export Var_script_dir="${0%/*}"
 export Var_script_name="${0##*/}"
 source "${Var_script_dir}/lib/functions.sh"
-Func_source_file "${Var_script_dir}/lib/variables.sh"
+Func_source_file "${Var_script_dir}/lib/variables"
 echo "# ${Var_script_name} started at: $(date -u +%s)"
 if [ -f "${Var_main_script_name}" ]; then
 	chmod u+x "${Var_main_script_name}"
