@@ -16,7 +16,7 @@ if [ -e "${Var_main_script_name}" ]; then
 	_exit_status=$?
 	Func_check_exit_status "${_exit_status}" "${Var_main_script_name} --version"
 	echo "# ${Var_script_name} running: ./${Var_main_script_name} --apt-check-depends-yn=\"yes\""
-	./${Var_main_script_name} --apt-check-depends-yn="yes"
+	./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn="yes"
 	_exit_status=$?
 	Func_check_exit_status "${_exit_status}" "${Var_main_script_name} --apt-check-depends-yn=\"yes\""
 else

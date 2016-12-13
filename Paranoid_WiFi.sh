@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+##shellcheck -e SC2002,SC2004,SC2086,SC2129 Paranoid_WiFi.sh
 Var_script_dir="${0%/*}"
 Var_script_name="${0##*/}"
 ## Internal script variables that can also be set by users
@@ -22,11 +23,12 @@ Var_ovpns_config_path="/etc/openvpn/server.conf"
 Var_ovpns_internal_ip="10.8.0.0"
 Var_ovpns_internal_netmask="255.255.255.0"
 Var_ovpns_listen_ip="192.168.0.5"
-Var_ovpns_listen_protocal="udp"
 Var_ovpns_listen_port="9988"
 Var_ovpns_chroot_yn="yes"
 Var_ovpns_chroot_path="/etc/openvpn/jailed_server"
 Var_ovpns_dns_ip_list="208.67.222.222,208.67.220.220"
+Var_ovpns_push_route_yn="yes"
+Var_ovpns_client_to_client_yn=""
 Var_ovpns_route_ip="192.168.0.0"
 Var_ovpns_route_netmask="255.255.255.0"
 Var_ovpns_user="vpnjail"
@@ -46,10 +48,11 @@ Var_ovpns_sndbuf="393216"
 Var_ovpns_rcvbuf="393216"
 Var_ovpns_tun_mtu="1400"
 Var_ovpns_mssfix="1360"
-Var_ovpns_tls_cipher="TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-128-GCM-SHA256:TLS-DHE-RSA-WITH-AES-256-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-256-CBC-SHA:TLS-DHE-RSA-WITH-AES-128-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-128-CBC-SHA"
+Var_ovpn_tls_cipher="TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-128-GCM-SHA256:TLS-DHE-RSA-WITH-AES-256-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-256-CBC-SHA:TLS-DHE-RSA-WITH-AES-128-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-128-CBC-SHA"
 ## Easy-RSA config settings
 Var_easyrsa_examples_path="/usr/share/doc/openvpn/examles/easy-rsa/2.0"
 Var_easyrsa_working_path="/etc/openvpn/easy-rsa"
+Var_easyrsa_server_name="server"
 Var_easyrsa_key_size="2048"
 Var_easyrsa_ca_expire="3650"
 Var_easyrsa_key_expire="3650"
@@ -60,6 +63,19 @@ Var_easyrsa_key_org="Organization"
 Var_easyrsa_key_email="$(id -un)@${HOSTNAME}.local"
 Var_easyrsa_key_ou="OrganizationUnit"
 Var_easyrsa_key_name="EasyRSA"
+## Variables for OpenVPN client configs
+Var_ovpnc_config_yn=""
+Var_ovpnc_verbosity="3"
+Var_ovpnc_config_dir=""
+Var_ovpnc_names=""
+Var_ovpnc_win32_tap=""
+Var_ovpnc_hosts_ports=""
+Var_ovpnc_http_proxies_ports=""
+Var_ovpnc_pass_yn="yes"
+Var_ovpnc_pass_length="32"
+## Variables shared by OpenVPN client and server configs
+Var_ovpn_protocal="udp"
+Var_ovpn_tun_or_tap="tun"
 ## Variables for executables
 Var_echo_exec_path="$(which echo)"
 ## Assigne default functions for handling messages,
@@ -82,8 +98,89 @@ Func_check_args(){
 			--debug-level|Var_debug_level)
 				Func_assign_arg "Var_debug_level" "${_arg#*=}"
 			;;
+			--easyrsa-examples-path|Var_easyrsa_examples_path)
+				Func_assign_arg "Var_easyrsa_examples_path" "${_arg#*=}"
+			;;
+			--easyrsa-working-path|Var_easyrsa_working_path)
+				Func_assign_arg "Var_easyrsa_working_path" "${_arg#*=}"
+			;;
+			--easyrsa-server-name|Var_easyrsa_server_name)
+				Func_assign_arg "Var_easyrsa_server_name" "${_arg#*=}"
+			;;
+			--easyrsa-key-size|Var_easyrsa_key_size)
+				Func_assign_arg "Var_easyrsa_key_size" "${_arg#*=}"
+			;;
+			--easyrsa-ca-expire|Var_easyrsa_ca_expire)
+				Func_assign_arg "Var_easyrsa_ca_expire" "${_arg#*=}"
+			;;
+			--easyrsa-key-expire|Var_easyrsa_key_expire)
+				Func_assign_arg "Var_easyrsa_key_expire" "${_arg#*=}"
+			;;
+			--easyrsa-key-country|Var_easyrsa_key_country)
+				Func_assign_arg "Var_easyrsa_key_country" "${_arg#*=}"
+			;;
+			--easyrsa-key-province|Var_easyrsa_key_province)
+				Func_assign_arg "Var_easyrsa_key_province" "${_arg#*=}"
+			;;
+			--easyrsa-key-city|Var_easyrsa_key_city)
+				Func_assign_arg "Var_easyrsa_key_city" "${_arg#*=}"
+			;;
+			--easyrsa-key-org|Var_easyrsa_key_org)
+				Func_assign_arg "Var_easyrsa_key_org" "${_arg#*=}"
+			;;
+			--easyrsa-key-email|Var_easyrsa_key_email)
+				Func_assign_arg "Var_easyrsa_key_email" "${_arg#*=}"
+			;;
+			--easyrsa-key-ou|Var_easyrsa_key_ou)
+				Func_assign_arg "Var_easyrsa_key_ou" "${_arg#*=}"
+			;;
+			--easyrsa-key-name|Var_easyrsa_key_name)
+				Func_assign_arg "Var_easyrsa_key_name" "${_arg#*=}"
+			;;
 			--log-level|Var_log_level)
 				Func_assign_arg "Var_log_level" "${_arg#*=}"
+			;;
+			--ovpn-tls-cipher|Var_ovpn_tls_cipher)
+				Func_assign_arg "Var_ovpn_tls_cipher" "${_arg#*=}"
+			;;
+			--ovpn-listen-protocal|Var_ovpn_protocal)
+				Func_assign_arg "Var_ovpn_protocal" "${_arg#*=}"
+			;;
+			--ovpn-tun-or-tap|Var_ovpn_tun_or_tap)
+				Func_assign_arg "Var_ovpn_tun_or_tap" "${_arg#*=}"
+			;;
+			--ovpnc-config-yn|Var_ovpnc_config_yn)
+				Func_assign_arg "Var_ovpnc_config_yn" "${_arg#*=}"
+			;;
+			--ovpnc-verbosity|Var_ovpnc_verbosity)
+				Func_assign_arg "Var_ovpnc_verbosity" "${_arg#*=}"
+			;;
+			--ovpnc-config-dir|Var_ovpnc_config_dir)
+				Func_assign_arg "Var_ovpnc_config_dir" "${_arg#*=}"
+			;;
+			--ovpnc-names|Var_ovpnc_names)
+				Func_assign_arg "Var_ovpnc_names" "${_arg#*=}"
+			;;
+			--ovpnc-win32-tap|Var_ovpnc_win32_tap)
+				Func_assign_arg "Var_ovpnc_win32_tap" "${_arg#*=}"
+			;;
+			--ovpnc-hosts-ports|Var_ovpnc_hosts_ports)
+				Func_assign_arg "Var_ovpnc_hosts_ports" "${_arg#*=}"
+			;;
+			--ovpnc-http-proxies-ports|Var_ovpnc_http_proxies_ports)
+				Func_assign_arg "Var_ovpnc_http_proxies_ports" "${_arg#*=}"
+			;;
+			--ovpnc-pass-yn|Var_ovpnc_pass_yn)
+				Func_assign_arg "Var_ovpnc_pass_yn" "${_arg#*=}"
+			;;
+			--ovpnc-pass-length|Var_ovpnc_pass_length)
+				Func_assign_arg "Var_ovpnc_pass_length" "${_arg#*=}"
+			;;
+			--ovpns-push-route-yn|Var_ovpns_push_route_yn)
+				Func_assign_arg "Var_ovpns_push_route_yn" "${_arg#*=}"
+			;;
+			--ovpns-client-to-client-yn|Var_ovpns_client_to_client_yn)
+				Func_assign_arg "Var_ovpns_client_to_client_yn" "${_arg#*=}"
 			;;
 			--ovpns-config-yn|Var_ovpns_config_yn)
 				Func_assign_arg "Var_ovpns_config_yn" "${_arg#*=}"
@@ -108,9 +205,6 @@ Func_check_args(){
 			;;
 			--ovpns-listen-ip|Var_ovpns_listen_ip)
 				Func_assign_arg "Var_ovpns_listen_ip" "${_arg#*=}"
-			;;
-			--ovpns-listen-protocal|Var_ovpns_listen_protocal)
-				Func_assign_arg "Var_ovpns_listen_protocal" "${_arg#*=}"
 			;;
 			--ovpns-listen-port|Var_ovpns_listen_port)
 				Func_assign_arg "Var_ovpns_listen_port" "${_arg#*=}"
@@ -151,9 +245,6 @@ Func_check_args(){
 			--ovpns-ta-path|Var_ovpns_ta_path)
 				Func_assign_arg "Var_ovpns_ta_path" "${_arg#*=}"
 			;;
-			--ovpns-tls-cipher|Var_ovpns_tls_cipher)
-				Func_assign_arg "Var_ovpns_tls_cipher" "${_arg#*=}"
-			;;
 			--ovpns-verbosity|Var_ovpns_verbosity)
 				Func_assign_arg "Var_ovpns_verbosity" "${_arg#*=}"
 			;;
@@ -174,42 +265,6 @@ Func_check_args(){
 			;;
 			--ovpns-mssfix|Var_ovpns_mssfix)
 				Func_assign_arg "Var_ovpns_mssfix" "${_arg#*=}"
-			;;
-			--easyrsa-examples-path|Var_easyrsa_examples_path)
-				Func_assign_arg "Var_easyrsa_examples_path" "${_arg#*=}"
-			;;
-			--easyrsa-working-path|Var_easyrsa_working_path)
-				Func_assign_arg "Var_easyrsa_working_path" "${_arg#*=}"
-			;;
-			--easyrsa-key-size|Var_easyrsa_key_size)
-				Func_assign_arg "Var_easyrsa_key_size" "${_arg#*=}"
-			;;
-			--easyrsa-ca-expire|Var_easyrsa_ca_expire)
-				Func_assign_arg "Var_easyrsa_ca_expire" "${_arg#*=}"
-			;;
-			--easyrsa-key-expire|Var_easyrsa_key_expire)
-				Func_assign_arg "Var_easyrsa_key_expire" "${_arg#*=}"
-			;;
-			--easyrsa-key-country|Var_easyrsa_key_country)
-				Func_assign_arg "Var_easyrsa_key_country" "${_arg#*=}"
-			;;
-			--easyrsa-key-province|Var_easyrsa_key_province)
-				Func_assign_arg "Var_easyrsa_key_province" "${_arg#*=}"
-			;;
-			--easyrsa-key-city|Var_easyrsa_key_city)
-				Func_assign_arg "Var_easyrsa_key_city" "${_arg#*=}"
-			;;
-			--easyrsa-key-org|Var_easyrsa_key_org)
-				Func_assign_arg "Var_easyrsa_key_org" "${_arg#*=}"
-			;;
-			--easyrsa-key-email|Var_easyrsa_key_email)
-				Func_assign_arg "Var_easyrsa_key_email" "${_arg#*=}"
-			;;
-			--easyrsa-key-ou|Var_easyrsa_key_ou)
-				Func_assign_arg "Var_easyrsa_key_ou" "${_arg#*=}"
-			;;
-			--easyrsa-key-name|Var_easyrsa_key_name)
-				Func_assign_arg "Var_easyrsa_key_name" "${_arg#*=}"
 			;;
 			--script-log-path|Var_script_log_path)
 				Func_assign_arg "Var_script_log_path" "${_arg#*=}"
@@ -269,8 +324,22 @@ Func_help(){
 	echo "## Command line options for apt-get automation"
 	echo "# --apt-check-depends-yn		Var_apt_check_depends_yn=\"${Var_apt_check_depends_yn}\""
 	echo "# --apt-depends-list		Var_apt_depends_list=\"${Var_apt_depends_list}\""
+	echo "# --ovpn-auth			Var_ovpn_auth=\"${Var_ovpn_auth}\""
+	echo "# --ovpn-cipher			Var_ovpn_cipher=\"${Var_ovpn_cipher}\""
+	echo "# --ovpn-protocal			Var_ovpn_protocal=\"${Var_ovpn_protocal}\""
+	echo "# --ovpnc-config-yn		Var_ovpnc_config_yn=\"${Var_ovpnc_config_yn}\""
+	echo "# --ovpnc-config-dir		Var_ovpnc_config_dir=\"${Var_ovpnc_config_dir}\""
+	echo "# --ovpnc-names			Var_ovpnc_names=\"${Var_ovpnc_names}\""
+	echo "# --ovpnc-win32-tap		Var_ovpnc_win32_tap=\"${Var_ovpnc_win32_tap}\""
+	echo "# --ovpnc-hosts-ports		Var_ovpnc_hosts_ports=\"${Var_ovpnc_hosts_ports}\""
+	echo "# --ovpnc-http-proxies-ports	Var_ovpnc_http_proxies_ports=\"${Var_ovpnc_http_proxies_ports}\""
+	echo "# --ovpnc-tun-or-tap		Var_ovpn_tun_or_tap=\"${Var_ovpn_tun_or_tap}\""
+	echo "# --ovpnc-pass-yn			Var_ovpnc_pass_yn=\"${Var_ovpnc_pass_yn}\""
+	echo "# --ovpnc-pass-length		Var_ovpnc_pass_length=\"${Var_ovpnc_pass_length}\""
+	echo "# --ovpnc-push-route-yn		Var_ovpns_push_route_yn=\"${Var_ovpns_push_route_yn}\""
 	echo "## Command line options for OpenVPN server installation/configuration"
 	echo "# --ovnps-config-yn		Var_ovpns_config_yn=\"${Var_ovpns_config_yn}\""
+	echo "# --ovpns-client-to-client-yn	Var_ovpns_client_to_client_yn=\"${Var_ovpns_client_to_client_yn}\""
 	echo "# --ovpns-config-path		Var_ovpns_config_path=\"${Var_ovpns_config_path}\""
 	echo "# --ovpns-chroot-yn		Var_ovpns_chroot_yn=\"${Var_ovpns_chroot_yn}\""
 	echo "# --ovpns-chroot-path		Var_ovpns_chroot_path=\"${Var_ovpns_chroot_path}\""
@@ -278,7 +347,6 @@ Func_help(){
 	echo "# --ovpns-internal-ip		Var_ovpns_internal_ip=\"${Var_ovpns_internal_ip}\""
 	echo "# --ovpns-internal-netmask	Var_ovpns_internal_netmask=\"${Var_ovpns_internal_netmask}\""
 	echo "# --ovpns-listen-ip		Var_ovpns_listen_ip=\"${Var_ovpns_listen_ip}\""
-	echo "# --ovpns-listen-protocal		Var_ovpns_listen_protocal=\"${Var_ovpns_listen_protocal}\""
 	echo "# --ovpns-listen-port		Var_ovpns_listen_port=\"${Var_ovpns_listen_port}\""
 	echo "# --ovpns-route-ip		Var_ovpns_route_ip=\"${Var_ovpns_route_ip}\""
 	echo "# --ovpns-route-netmask		Var_ovpns_route_netmask=\"${Var_ovpns_route_netmask}\""
@@ -292,14 +360,13 @@ Func_help(){
 	echo "# --ovpns-status-path		Var_ovpns_status_path=\"${Var_ovpns_status_path}\""
 	echo "# --ovpns-log-path		Var_ovpns_log_path=\"${Var_ovpns_log_path}\""
 	echo "# --ovpns-verbosity		Var_ovpns_verbosity=\"${Var_ovpns_verbosity}\""
-	echo "# --ovpns-cipher			Var_ovpn_cipher=\"${Var_ovpn_cipher}\""
-	echo "# --ovpns-auth			Var_ovpn_auth=\"${Var_ovpn_auth}\""
 	echo "# --ovpns-tun-mtu			Var_ovpns_tun_mtu=\"${Var_ovpns_tun_mtu}\""
 	echo "# --ovpns-mssfix			Var_ovpns_mssfix=\"${Var_ovpns_mssfix}\""
 	echo "# --ovpns-ta-path			Var_ovpns_ta_path=\"${Var_ovpns_ta_path}\""
-	echo "# --ovpns-tls-cipher		Var_ovpns_tls_cipher=\"${Var_ovpns_tls_cipher}\""
+	echo "# --ovpn-tls-cipher		Var_ovpn_tls_cipher=\"${Var_ovpn_tls_cipher}\""
 	echo "# --easyrsa-examples-path		Var_easyrsa_examples_path=\"${Var_easyrsa_examples_path}\""
 	echo "# --easyrsa-working-path		Var_easyrsa_working_path=\"${Var_easyrsa_working_path}\""
+	echo "# --easyrsa-server-name		Var_easyrsa_server_name=\"${Var_easyrsa_server_name}\""
 	echo "# --easyrsa-key-size		Var_easyrsa_key_size=\"${Var_easyrsa_key_size}\""
 	echo "# --easyrsa-ca-expire		Var_easyrsa_ca_expire=\"${Var_easyrsa_ca_expire}\""
 	echo "# --easyrsa-key-expire		Var_easyrsa_key_expire=\"${Var_easyrsa_key_expire}\""
@@ -398,30 +465,46 @@ Func_apt_check_install_depends(){
 }
 Func_write_openvpn_server_config(){
 	if [ -f "${Var_ovpns_config_path}" ]; then
-		#Func_message "#  running: " '2' '3'
+		Func_message "# Func_write_openvpn_server_config running: mv -v \"${Var_ovpns_config_path}\" \"${Var_ovpns_config_path%.conf*}.bak\"" '2' '3'
 		mv -v "${Var_ovpns_config_path}" "${Var_ovpns_config_path%.conf*}.bak"
 	fi
-	#Func_message "#  running: " '2' '3'
+	Func_message "# Func_write_openvpn_server_config beguining server configs: ${Var_ovpns_config_path}" '2' '3'
 	cat > "${Var_ovpns_config_path}" <<EOF
-dev tun
+dev ${Var_ovpn_tun_or_tap:-tun}
 local ${Var_ovpns_listen_ip}
 port ${Var_ovpns_listen_port}
-proto ${Var_ovpns_listen_protocal}
+proto ${Var_ovpn_protocal}
 server ${Var_ovpns_internal_ip} ${Var_ovpns_internal_netmask}
 keepalive 10 60
 comp-lzo
 persist-key
 persist-tun
 EOF
-	case "${Var_ovpns_chroot_yn}" in
+	case "${Var_ovpns_client_to_client_yn}" in
 		y|Y|yes|Yes|YES)
-			#Func_message "#  running: " '2' '3'
+			Func_message "# Func_write_openvpn_server_config enabling client to client configs: ${Var_ovpns_config_path}" '2' '3'
 			cat >> "${Var_ovpns_config_path}" <<EOF
-chroot ${Var_ovpns_chroot_path}
+client-to-client
 EOF
 		;;
 	esac
-	#Func_message "#  running: " '2' '3'
+	case "${Var_ovpns_chroot_yn}" in
+		y|Y|yes|Yes|YES)
+			Func_message "# Func_write_openvpn_server_config running: mkdir -p \"${Var_ovpns_chroot_path}/dev/log\"" '2' '3'
+			mkdir -p "${Var_ovpns_chroot_path}/dev/log"
+			Func_message "# Func_write_openvpn_server_config running: mkdir -p \"${Var_ovpns_chroot_path}/tmp\"" '2' '3'
+			mkdir -p "${Var_ovpns_chroot_path}/tmp"
+			Func_message "# Func_write_openvpn_server_config enabling chroot configs: ${Var_ovpns_config_path}" '2' '3'
+			cat >> "${Var_ovpns_config_path}" <<EOF
+chroot ${Var_ovpns_chroot_path}
+EOF
+			Func_message "# Func_write_openvpn_server_config running: echo \"\$AddUnixListenSocket ${Var_ovpns_chroot_path}/dev/log\" >> \"/etc/rsyslog.conf\"" '2' '3'
+			echo "\$AddUnixListenSocket ${Var_ovpns_chroot_path}/dev/log" >> "/etc/rsyslog.conf"
+			Func_message "# Func_write_openvpn_server_config running: service rsyslog restart" '2' '3'
+			service rsyslog restart
+		;;
+	esac
+	Func_message "# Func_write_openvpn_server_config writing key and certs to: ${Var_ovpns_config_path}" '2' '3'
 	cat >> "${Var_ovpns_config_path}" <<EOF
 user ${Var_ovpns_user}
 group ${Var_ovpns_group}
@@ -436,18 +519,25 @@ verb ${Var_ovpns_verbosity}
 push "redirect-gateway def1"
 EOF
 	for _dns_ip in ${Var_ovpns_dns_ip_list//,/ }; do
-		#Func_message "#  running: " '2' '3'
+		Func_message "# Func_write_openvpn_server_config writing push dns [${_dns_ip}] config to: ${Var_ovpns_config_path}" '2' '3'
 		cat >> "${Var_ovpns_config_path}" <<EOF
 push "dhcp-option DNS ${_dns_ip}"
 EOF
 	done
-	#Func_message "#  running: " '2' '3'
+	case "${Var_ovpns_push_route_yn}" in
+		y|Y|yes|Yes|YES)
+			Func_message "# Func_write_openvpn_server_config writing push route [${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}] config to: ${Var_ovpns_config_path}: " '2' '3'
+			cat >> "${Var_ovpns_config_path}" <<EOF
+push "route ${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}"
+EOF
+		;;
+	esac
+	Func_message "# Func_write_openvpn_server_config writing last few configs to: ${Var_ovpns_config_path}: " '2' '3'
 	cat >> "${Var_ovpns_config_path}" <<EOF
 route ${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}
-push "route ${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}"
 cipher ${Var_ovpn_cipher}
 auth ${Var_ovpn_auth}
-tls-cipher ${Var_ovpns_tls_cipher}
+tls-cipher ${Var_ovpn_tls_cipher}
 tls-auth ${Var_ovpns_ta_path} 0
 sndbuf ${Var_ovpns_sndbuf}
 rcvbuf ${Var_ovpns_rcvbuf}
@@ -461,11 +551,11 @@ push "block-outside-dns"
 EOF
 }
 Func_write_easyrsa_vars(){
-	#Func_message "#  running: " '2' '3'
+	Func_message "# Func_write_easyrsa_vars running: mkdir -p \"${Var_easyrsa_working_path}\"" '2' '3'
 	mkdir -p "${Var_easyrsa_working_path}"
-	#Func_message "#  running: " '2' '3'
+	Func_message "# Func_write_easyrsa_vars running: cp -R \"${Var_easyrsa_examples_path}/\*\" \"${Var_easyrsa_working_path}/\"" '2' '3'
 	cp -R "${Var_easyrsa_examples_path}/*" "${Var_easyrsa_working_path}/"
-	#Func_message "#  running: " '2' '3'
+	Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
 	cat > "${Var_easyrsa_working_path}/vars" <<EOF
 export EASY_RSA="\$(pwd)"
 export OPENSSL="openssl"
@@ -488,45 +578,240 @@ export KEY_OU="${Var_easyrsa_key_ou}"
 export KEY_NAME="${Var_easyrsa_key_name}"
 EOF
 }
+Func_easyrsa_server_gen_certs(){
+	_old_pwd="${PWD}"
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cd "${Var_easyrsa_working_path}"
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	source ./vars
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	./clean-all
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	./build-dh
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	./pkitool --initca
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	./pkitool --server ${Var_easyrsa_server_name}
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cd "${Var_easyrsa_working_path}/keys"
+	openvpn --genkey --secret ta.key
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cp "ca.cert" "${Var_ovpns_ca_path}"
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cp "${Var_easyrsa_server_name}.cert" "${Var_ovpns_cert_path}"
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cp "${Var_easyrsa_server_name}.key" "${Var_ovpns_key_path}"
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cp "dh${Var_easyrsa_key_size}.pem" "${Var_ovpns_dh_path}"
+	Func_message "# Func_easyrsa_server_gen_certs running: " '2' '3'
+	cp "ta.key" "${Var_ovpns_ta_path}"
+	Func_message "# Func_easyrsa_clients_gen_certs running: " '2' '3'
+	cd "${_old_pwd}"
+	Func_message "# Func_easyrsa_clients_gen_certs running: " '2' '3'
+	unset _old_pwd
+}
 Func_mkuser_openvpn_server(){
-	#Func_message "#  running: " '2' '3'
+	Func_message "# Func_mkuser_openvpn_server running: adduser --system --shell /usr/sbin/nologin --no-create-home ${Var_ovpns_user}" '2' '3'
 	adduser --system --shell /usr/sbin/nologin --no-create-home ${Var_ovpns_user}
 }
-#Func_write_openvpn_client_config(){
-#	cat >> "${Var_ovpns_config_path}" <<EOF
-#	
-#EOF
-#}
+Func_easyrsa_clients_gen_certs(){
+	_client_name="${1}"
+	_old_pwd="${PWD}"
+	Func_message "# Func_easyrsa_clients_gen_certs running: cd \"${Var_easyrsa_working_path}\"" '3' '4'
+	cd "${Var_easyrsa_working_path}"
+			case "${Var_ovpnc_pass_yn}" in
+				y|Y|yes|Yes|YES)
+					_pass="$(cat /dev/urandom | tr -cd '[:print:]' | head -c"${Var_ovpnc_pass_length}")"
+					echo "${_client_name}" >> "${Var_ovpnc_config_dir}/${_client_name}.pass"
+					echo "${_pass}" >> "${Var_ovpnc_config_dir}/${_client_name}.pass"
+					Func_message "# Func_easyrsa_clients_gen_certs running: tail -n1 \"${Var_ovpnc_config_dir}/${_client_name}.pass\" | ./pkitool --pass ${_client_name}" '3' '4'
+					tail -n1 "${Var_ovpnc_config_dir}/${_client_name}.pass" | ./pkitool --pass ${_client_name}
+				;;
+				*)
+					Func_message "# Func_easyrsa_clients_gen_certs running: ./pkitool ${_client_name}" '3' '4'
+					./pkitool ${_client_name}
+				;;
+			esac
+	Func_message "# Func_easyrsa_clients_gen_certs running: cd \"${_old_pwd}\"" '3' '4'
+	cd "${_old_pwd}"
+	Func_message "# Func_easyrsa_clients_gen_certs running: unset _old_pwd" '3' '4'
+	unset _old_pwd
+}
+Func_write_openvpn_ipp_config(){
+	_client_name="${1}"
+	if [ -f "${Var_ovpns_ipp_path}" ]; then
+		_last_client_ip="$(tail -n1 "${Var_ovpns_ipp_path}" | awk '{gsub(","," "); print $2}')"
+		_client_ip="${_last_client_ip%.*}.$((${_last_client_ip##*.}+4))"
+		Func_message "# Func_write_openvpn_ipp_config writing [${_client_name},${_client_ip}] to: ${Var_ovpns_ipp_path}" '3' '4'
+		cat >> "${Var_ovpns_ipp_path}" <<EOF
+${_client_name},${_client_ip}
+EOF
+	else
+		_client_ip="${Var_ovpns_internal_ip%.*}.4"
+		Func_message "# Func_write_openvpn_ipp_config writing [${_client_name},${_client_ip}] to: ${Var_ovpns_ipp_path}" '3' '4'
+		cat >> "${Var_ovpns_ipp_path}" <<EOF
+${_client_name},${_client_ip}
+EOF
+	fi
+}
+Func_write_openvpn_client_config(){
+	if ! [ -d "${Var_ovpnc_config_dir}" ]; then
+		Func_message "# Func_write_openvpn_client_config running: mkdir -p \"${Var_ovpnc_config_dir}\"" '2' '3'
+		mkdir -p "${Var_ovpnc_config_dir}"
+	fi
+	for _client_name in ${Var_ovpnc_names//,/ }; do
+		if ! [ -f "${Var_ovpnc_config_dir}/${_client_name}.ovpn" ]; then
+			Func_message "# Func_write_openvpn_client_config running: Func_easyrsa_clients_gen_certs \"${_client_name}\"" '2' '3'
+			Func_easyrsa_clients_gen_certs "${_client_name}"
+			Func_message "# Func_write_openvpn_client_config running: Func_write_openvpn_ipp_config \"${_client_name}\"" '2' '3'
+			Func_write_openvpn_ipp_config "${_client_name}"
+			_client_path="${Var_ovpnc_config_dir}/${_client_name}.ovpn"
+			Func_message "# Func_write_openvpn_client_config starting config: ${_client_path}" '2' '3'
+			cat > "${_client_path}" <<EOF
+client
+dev ${Var_ovpn_tun_or_tap:-tun}
+nobind
+nouser
+nogroup
+persist-key
+persist-tun
+ca [inline]
+cert [inline]
+key [inline]
+tls-auth [inline] 1
+verb ${Var_ovpnc_verbosity}
+keepalive 10 120
+remote-cert-tls server
+proto ${Var_ovpn_protocal}
+cipher ${Var_ovpn_cipher}
+comp-lzo
+tls-cipher ${Var_ovpn_tls_cipher}
+block-outside-dns
+EOF
+			if [ ${#Var_ovpnc_win32_tap} != "0" ]; then
+				Func_message "# Func_write_openvpn_client_config appending [dev-node ${Var_ovpnc_win32_tap}] to: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+dev-node ${Var_ovpnc_win32_tap}
+EOF
+			fi
+			for _host_port in ${Var_ovpnc_hosts_ports//,/ }; do
+				_host="${_host_port%%*:}"
+				_port="${_host_port##*:}"
+				Func_message "# Func_write_openvpn_client_config appending [remote ${_host} ${_port}] to: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+remote ${_host} ${_port}
+EOF
+			done
+			Func_message "# Func_write_openvpn_client_config appending [remote-random] & [resolv-retry infinite] to: ${_client_path}" '2' '3'
+			cat >> "${_client_path}" <<EOF
+remote-random
+resolv-retry infinite
+EOF
+			if [ "${#Var_ovpnc_http_proxies_ports}" != "0" ]; then
+				Func_message "# Func_write_openvpn_client_config appending [http-proxy-retry] to: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+http-proxy-retry
+EOF
+				for _host_port in ${Var_ovpnc_http_proxies_ports//,/ }; do
+					_host="${_host_port%%*:}"
+					_port="${_host_port##*:}"
+					Func_message "# Func_write_openvpn_client_config appending [http-proxy ${_host} ${_port}] to: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
+http-proxy ${_host} ${_port}
+EOF
+				done
+			fi
+			case "${Var_ovpnc_pass_yn}" in
+				y|Y|yes|Yes|YES)
+					Func_message "# Func_write_openvpn_client_config appending [auth-user-pass \"${_client_name}.pass\"] to: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
+auth-user-pass "${_client_name}.pass"
+EOF
+				;;
+			esac
+			if [ -f "${Var_ovpnc_config_dir}/${_client_name}.crt" ]; then
+				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpnc_config_dir}/${_client_name}.crt] within: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+<cert>
+EOF
+				cat "${Var_ovpnc_config_dir}/${_client_name}.crt" >> "${_client_path}"
+				cat >> "${_client_path}" <<EOF
+</cert>
+EOF
+			fi
+			if [ -f "${Var_ovpnc_config_dir}/${_client_name}.key" ]; then
+				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpnc_config_dir}/${_client_name}.key] within: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+<key>
+EOF
+				cat "${Var_ovpnc_config_dir}/${_client_name}.key" >> "${_client_path}"
+				cat >> "${_client_path}" <<EOF
+</key>
+EOF
+			fi
+			if [ -f "${Var_ovpns_config_dir}/ca.crt" ]; then
+				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpns_config_dir}/ca.crt] within: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+<ca>
+EOF
+				cat "${Var_ovpns_config_dir}/ca.crt" >> "${_client_path}"
+				cat >> "${_client_path}" <<EOF
+</ca>
+EOF
+			fi
+			if [ -f "${Var_ovpns_config_dir}/ta.key" ]; then
+				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpns_config_dir}/ta.key] within: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
+key-direction 1
+<tls-auth>
+EOF
+				cat "${Var_ovpns_config_dir}/ta.key" >> "${_client_path}"
+				cat >> "${_client_path}" <<EOF
+</tls-auth>
+EOF
+			fi
+			Func_message "# Func_write_openvpn_client_config NOTICE - files [${_client_path}] & [${_client_name}.pass] (if available) should be transfered to client [${_client_name}] securly to connect to server name [${Var_easyrsa_server_name}]" '2' '3'
+##			End of writing config file for client name
+		fi
+	done
+	Func_message "# Func_write_openvpn_client_config NOTICE - $(ls -hal "${Var_ovpnc_config_dir}")"
+}
 ## Do stuff with input and above functions inside bellow function
 Func_main(){
 	_input=( "$@" )
 	if [ "${#_input[@]}" = "0" ]; then
-		Func_message "# ${Var_script_name} running: Func_check_args \"--help\"" '1' '2'
+		Func_message "# Func_main running: Func_check_args \"--help\"" '1' '2'
 		Func_check_args "--help"
 	else
-		Func_message "# ${Var_script_name} running: Func_check_args \"${_input[*]}\"" '1' '2'
+		Func_message "# Func_main running: Func_check_args \"${_input[*]}\"" '1' '2'
 		Func_check_args "${_input[@]}"
 	fi
 	unset -v _input[@]
 	## Do stuff with assigned variables
 	case "${Var_apt_check_depends_yn}" in
 		y|Y|yes|Yes|YES)
-			Func_message "# ${Var_script_name} running: " '1' '2'
+			Func_message "# Func_main running: Func_apt_check_install_depends" '1' '2'
 			Func_apt_check_install_depends
 		;;
 	esac
 	case "${Var_ovpns_config_yn}" in
 		y|Y|yes|Yes|YES)
-			Func_message "# ${Var_script_name} running: " '1' '2'
+			Func_message "# Func_main running: Func_mkuser_openvpn_server" '1' '2'
 			Func_mkuser_openvpn_server
-			Func_message "# ${Var_script_name} running: " '1' '2'
+			Func_message "# Func_main running: Func_write_openvpn_server_config" '1' '2'
 			Func_write_openvpn_server_config
-			Func_message "# ${Var_script_name} running: " '1' '2'
+			Func_message "# Func_main running: Func_write_easyrsa_vars" '1' '2'
 			Func_write_easyrsa_vars
+			Func_message "# Func_main running: Func_easyrsa_server_gen_certs" '1' '2'
+			Func_easyrsa_server_gen_certs
 		;;
 	esac
-	#Func_message "# ${Var_script_name} running: " '1' '2'
-	#Func_write_openvpn_client_config
+	case "${Var_ovpnc_config_yn}" in
+		y|Y|yes|Yes|YES)
+			Func_message "# Func_main running: Func_write_openvpn_client_config" '1' '2'
+			Func_write_openvpn_client_config
+		;;
+	esac
 	
 }
 Func_message "# ${Var_script_name} running: Func_main \"\$@\"" '0' '1'
