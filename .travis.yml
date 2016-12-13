@@ -32,9 +32,13 @@ before_install:
 # - chmod +x
 # -
 ## Run tests that report 'Passing' or 'Failing' build states
-#script:
-# - chmod +x 
-# - 
+##  - Run configuration steps for new OpenVPN server
+##  - Run configuration steps for new clients of OpenVPN server
+script:
+ - chmod +x .travis-ci/script_configure_clients_only.sh
+ - .travis-ci/script_configure_clients_only.sh
+ - chmod +x .travis-ci/script_configure_server_only.sh
+ - .travis-ci/script_configure_server_only.sh
 ## Setps to complete after success or falure
 #after_success:
 # - chmod u+x 
@@ -48,3 +52,5 @@ before_install:
 #after_script:
 ## Note above tricks for chmoding the scripts prior to execution where found
 ##  at: http://stackoverflow.com/a/33820642/2632107
+#.travis-ci/script_configure_clients_only.sh
+#.travis-ci/script_configure_server_only.sh
