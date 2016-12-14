@@ -17,8 +17,8 @@ if [ -e "${Var_main_script_name}" ]; then
 	Func_check_exit_status "${_exit_status}" "${Var_main_script_name} --version"
 #	echo "# ${Var_script_name} running: sudo ./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn=\"yes\" --apt-depends-list=\"${Var_main_script_apt_get_depends_list}\""
 #	sudo ./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn="yes" --apt-depends-list="${Var_main_script_apt_get_depends_list}"
-	echo "# ${Var_script_name} running: sudo apt-get update -qqq && sudo apt-get install ${Var_main_script_apt_get_depends_list}"
-	sudo apt-get update -qqq && sudo apt-get install ${Var_main_script_apt_get_depends_list}
+	echo "# ${Var_script_name} running: sudo apt-get update -qqq && sudo apt-get install ${Var_main_script_apt_get_depends_list//,/ }"
+	sudo apt-get update -qqq && sudo apt-get install ${Var_main_script_apt_get_depends_list//,/ }
 	_exit_status=$?
 	Func_check_exit_status "${_exit_status}" "./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn=\"yes\" --apt-depends-list=\"${Var_main_script_apt_get_depends_list}\""
 else
