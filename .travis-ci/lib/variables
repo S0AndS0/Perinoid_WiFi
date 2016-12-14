@@ -1,5 +1,5 @@
 Var_main_script_name="Paranoid_WiFi.sh"
-Var_main_script_apt_get_depends_list="openvpn,easy-rsa,dig"
+Var_main_script_apt_get_depends_list="openvpn,dnsutils"
 Var_local_ip="$(ip addr | awk '/inet/{print $2}' | grep -vE '127' | awk '{gsub("/"," "); print $1}' | head -n1)"
 Var_external_ip="$(dig +short myip.opendns.com @resolver1.opendns.com)"
 Var_listen_port="9988"
