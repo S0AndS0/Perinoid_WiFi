@@ -10,7 +10,7 @@ Func_source_file(){
 }
 Func_check_exit_status(){
 	_status="$1"
-	_command="{2:-unidentified_command}"
+	_command="${2:-unidentified_command}"
 	if [ "${_status}" != '0' ]; then
 		echo "# ${Var_script_name} error: ${_status}"
 		echo "# Failed to run: ${_command}"
