@@ -567,10 +567,11 @@ EOF
 	esac
 }
 Func_write_easyrsa_vars(){
-	Func_message "# Func_write_easyrsa_vars running: make-cadir \"${Var_easyrsa_working_path}\"" '2' '3'
-	make-cadir "${Var_easyrsa_working_path}"
-	Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
-	cat > "${Var_easyrsa_working_path}/vars" <<EOF
+	Func_message "# Func_write_easyrsa_vars running: $(which make-cadir) \"${Var_easyrsa_working_path}\"" '2' '3'
+	$(which make-cadir) "${Var_easyrsa_working_path}"
+	if [ -d "${Var_easyrsa_working_path}" ]; then
+		Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
+		cat > "${Var_easyrsa_working_path}/vars" <<EOF
 export EASY_RSA="\$(pwd)"
 export OPENSSL="openssl"
 export PKCS11TOOL="pkcs11-tool"
@@ -591,39 +592,48 @@ export KEY_EMAIL="${Var_easyrsa_key_email}"
 export KEY_OU="${Var_easyrsa_key_ou}"
 export KEY_NAME="${Var_easyrsa_key_name}"
 EOF
+	else
+		Func_message "# Func_write_easyrsa_vars cannot write: ${Var_easyrsa_working_path}/vars" '2' '3'
+		exit 1
+	fi
 }
 Func_easyrsa_server_gen_certs(){
-	_old_pwd="${PWD}"
-	Func_message "# Func_easyrsa_server_gen_certs running: cd \"${Var_easyrsa_working_path}\"" '2' '3'
-	cd "${Var_easyrsa_working_path}"
-	Func_message "# Func_easyrsa_server_gen_certs running: source ./vars" '2' '3'
-	source ./vars
-	Func_message "# Func_easyrsa_server_gen_certs running: ./clean-all" '2' '3'
-	./clean-all
-	Func_message "# Func_easyrsa_server_gen_certs running: ./build-dh" '2' '3'
-	./build-dh
-	Func_message "# Func_easyrsa_server_gen_certs running: ./pkitool --initca" '2' '3'
-	./pkitool --initca
-	Func_message "# Func_easyrsa_server_gen_certs running: ./pkitool --server ${Var_easyrsa_server_name}" '2' '3'
-	./pkitool --server ${Var_easyrsa_server_name}
-	Func_message "# Func_easyrsa_server_gen_certs running: cd \"${Var_easyrsa_working_path}/keys\"" '2' '3'
-	cd "${Var_easyrsa_working_path}/keys"
-	Func_message "# Func_easyrsa_server_gen_certs running: openvpn --genkey --secret ta.key" '2' '3'
-	openvpn --genkey --secret ta.key
-	Func_message "# Func_easyrsa_server_gen_certs running: cp \"ca.cert\" \"${Var_ovpns_ca_path}\"" '2' '3'
-	cp "ca.cert" "${Var_ovpns_ca_path}"
-	Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_server_name}.cert\" \"${Var_ovpns_cert_path}\"" '2' '3'
-	cp "${Var_easyrsa_server_name}.cert" "${Var_ovpns_cert_path}"
-	Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_server_name}.key\" \"${Var_ovpns_key_path}\"" '2' '3'
-	cp "${Var_easyrsa_server_name}.key" "${Var_ovpns_key_path}"
-	Func_message "# Func_easyrsa_server_gen_certs running: cp \"dh${Var_easyrsa_key_size}.pem\" \"${Var_ovpns_dh_path}\"" '2' '3'
-	cp "dh${Var_easyrsa_key_size}.pem" "${Var_ovpns_dh_path}"
-	Func_message "# Func_easyrsa_server_gen_certs running: cp \"ta.key\" \"${Var_ovpns_ta_path}\"" '2' '3'
-	cp "ta.key" "${Var_ovpns_ta_path}"
-	Func_message "# Func_easyrsa_server_gen_certs running: cd \"${_old_pwd}\"" '2' '3'
-	cd "${_old_pwd}"
-	Func_message "# Func_easyrsa_server_gen_certs running: unset _old_pwd" '2' '3'
-	unset _old_pwd
+	if [ -d "${Var_easyrsa_working_path}" ]; then
+		_old_pwd="${PWD}"
+		Func_message "# Func_easyrsa_server_gen_certs running: cd \"${Var_easyrsa_working_path}\"" '2' '3'
+		cd "${Var_easyrsa_working_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: source ./vars" '2' '3'
+		source ./vars
+		Func_message "# Func_easyrsa_server_gen_certs running: ./clean-all" '2' '3'
+		./clean-all
+		Func_message "# Func_easyrsa_server_gen_certs running: ./build-dh" '2' '3'
+		./build-dh
+		Func_message "# Func_easyrsa_server_gen_certs running: ./pkitool --initca" '2' '3'
+		./pkitool --initca
+		Func_message "# Func_easyrsa_server_gen_certs running: ./pkitool --server ${Var_easyrsa_server_name}" '2' '3'
+		./pkitool --server ${Var_easyrsa_server_name}
+		Func_message "# Func_easyrsa_server_gen_certs running: cd \"${Var_easyrsa_working_path}/keys\"" '2' '3'
+		cd "${Var_easyrsa_working_path}/keys"
+		Func_message "# Func_easyrsa_server_gen_certs running: openvpn --genkey --secret ta.key" '2' '3'
+		openvpn --genkey --secret ta.key
+		Func_message "# Func_easyrsa_server_gen_certs running: cp \"ca.cert\" \"${Var_ovpns_ca_path}\"" '2' '3'
+		cp "ca.cert" "${Var_ovpns_ca_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_server_name}.cert\" \"${Var_ovpns_cert_path}\"" '2' '3'
+		cp "${Var_easyrsa_server_name}.cert" "${Var_ovpns_cert_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_server_name}.key\" \"${Var_ovpns_key_path}\"" '2' '3'
+		cp "${Var_easyrsa_server_name}.key" "${Var_ovpns_key_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: cp \"dh${Var_easyrsa_key_size}.pem\" \"${Var_ovpns_dh_path}\"" '2' '3'
+		cp "dh${Var_easyrsa_key_size}.pem" "${Var_ovpns_dh_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: cp \"ta.key\" \"${Var_ovpns_ta_path}\"" '2' '3'
+		cp "ta.key" "${Var_ovpns_ta_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: cd \"${_old_pwd}\"" '2' '3'
+		cd "${_old_pwd}"
+		Func_message "# Func_easyrsa_server_gen_certs running: unset _old_pwd" '2' '3'
+		unset _old_pwd
+	else
+		Func_message "# Func_easyrsa_server_gen_certs cannot find directory: ${Var_easyrsa_working_path}" '2' '3'
+		exit 1
+	fi
 }
 Func_mkuser_openvpn_server(){
 	Func_message "# Func_mkuser_openvpn_server running: adduser --system --shell /usr/sbin/nologin --no-create-home ${Var_ovpns_user}" '2' '3'
