@@ -51,7 +51,7 @@ Var_ovpns_tun_mtu="1400"
 Var_ovpns_mssfix="1360"
 Var_ovpn_tls_cipher="TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-128-GCM-SHA256:TLS-DHE-RSA-WITH-AES-256-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-256-CBC-SHA:TLS-DHE-RSA-WITH-AES-128-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-128-CBC-SHA"
 ## Easy-RSA config settings
-Var_easyrsa_examples_path="/usr/share/doc/openvpn/examles/easy-rsa/2.0"
+Var_easyrsa_examples_path="/usr/share/easy-rsa"
 Var_easyrsa_working_path="/etc/openvpn/easy-rsa"
 Var_easyrsa_server_name="server"
 Var_easyrsa_key_size="2048"
@@ -456,7 +456,10 @@ EOF
 }
 ## Write functions to do stuff with assigned variables
 Func_apt_check_install_depends(){
+	Func_message "# Func_apt_check_install_depends running: apt-get update -qqq" '2' '3'
+	apt-get update -qqq
 	for _app in ${Var_apt_depends_list//,/ }; do
+		Func_message "# Func_apt_check_install_depends checking [${_app}] installation status" '2' '3'
 		_installed_state="$(apt-cache policy ${_app} | awk '/Installed/{print $2}')"
 		case "${_installed_state}" in
 			*none*)
@@ -467,8 +470,7 @@ Func_apt_check_install_depends(){
 	done
 	if [ "${#Arr_apt_depends_list[@]}" != "0" ]; then
 		Func_message "# Func_apt_check_install_depends installing [${Arr_apt_depends_list[*]}] via apt-get" '2' '3'
-		apt-get update -qqq && apt-get install -qqqy ${Arr_apt_depends_list[*]}
-		#sudo apt-get update -qqq && sudo apt-get install -qqqy ${Arr_apt_depends_list[*]}
+		apt-get install -qqqy ${Arr_apt_depends_list[*]}
 	fi
 }
 Func_write_openvpn_server_config(){
@@ -571,8 +573,8 @@ EOF
 Func_write_easyrsa_vars(){
 	Func_message "# Func_write_easyrsa_vars running: mkdir -p \"${Var_easyrsa_working_path}\"" '2' '3'
 	mkdir -p "${Var_easyrsa_working_path}"
-	Func_message "# Func_write_easyrsa_vars running: cp -R \"${Var_easyrsa_examples_path}/\*\" \"${Var_easyrsa_working_path}/\"" '2' '3'
-	cp -R "${Var_easyrsa_examples_path}/*" "${Var_easyrsa_working_path}/"
+	Func_message "# Func_write_easyrsa_vars running: cp --recursive \"${Var_easyrsa_examples_path}\" \"${Var_easyrsa_working_path}/\"" '2' '3'
+	cp --recursive "${Var_easyrsa_examples_path}" "${Var_easyrsa_working_path}/"
 	Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
 	cat > "${Var_easyrsa_working_path}/vars" <<EOF
 export EASY_RSA="\$(pwd)"
