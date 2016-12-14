@@ -22,7 +22,7 @@ matrix:
 ##  permissions, this should be the only build script that requires them.
 before_install:
  - chmod +x .travis-ci/before_install.sh
- - .travis-ci/before_install.sh
+ - sudo .travis-ci/before_install.sh
 ## Steps for successful install once dependencies are met.
 #install:
 # - chmod +x 
@@ -35,10 +35,10 @@ before_install:
 ##  - Run configuration steps for new OpenVPN server
 ##  - Run configuration steps for new clients of OpenVPN server
 script:
- - chmod +x .travis-ci/script_configure_clients_only.sh
- - .travis-ci/script_configure_clients_only.sh
  - chmod +x .travis-ci/script_configure_server_only.sh
- - .travis-ci/script_configure_server_only.sh
+ - sudo .travis-ci/script_configure_server_only.sh
+ - chmod +x .travis-ci/script_configure_clients_only.sh
+ - sudo .travis-ci/script_configure_clients_only.sh
 ## Setps to complete after success or falure
 #after_success:
 # - chmod u+x 

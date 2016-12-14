@@ -467,7 +467,8 @@ Func_apt_check_install_depends(){
 	done
 	if [ "${#Arr_apt_depends_list[@]}" != "0" ]; then
 		Func_message "# Func_apt_check_install_depends installing [${Arr_apt_depends_list[*]}] via apt-get" '2' '3'
-		sudo apt-get update -qqq && sudo apt-get install -qqqy ${Arr_apt_depends_list[*]}
+		apt-get update -qqq && apt-get install -qqqy ${Arr_apt_depends_list[*]}
+		#sudo apt-get update -qqq && sudo apt-get install -qqqy ${Arr_apt_depends_list[*]}
 	fi
 }
 Func_write_openvpn_server_config(){
