@@ -51,7 +51,6 @@ Var_ovpns_tun_mtu="1400"
 Var_ovpns_mssfix="1360"
 Var_ovpn_tls_cipher="TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-128-GCM-SHA256:TLS-DHE-RSA-WITH-AES-256-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-256-CBC-SHA:TLS-DHE-RSA-WITH-AES-128-CBC-SHA:TLS-DHE-RSA-WITH-CAMELLIA-128-CBC-SHA"
 ## Easy-RSA config settings
-Var_easyrsa_examples_path="/usr/share/easy-rsa"
 Var_easyrsa_working_path="/etc/openvpn/easy-rsa"
 Var_easyrsa_server_name="server"
 Var_easyrsa_key_size="2048"
@@ -98,9 +97,6 @@ Func_check_args(){
 			;;
 			--debug-level|Var_debug_level)
 				Func_assign_arg "Var_debug_level" "${_arg#*=}"
-			;;
-			--easyrsa-examples-path|Var_easyrsa_examples_path)
-				Func_assign_arg "Var_easyrsa_examples_path" "${_arg#*=}"
 			;;
 			--easyrsa-working-path|Var_easyrsa_working_path)
 				Func_assign_arg "Var_easyrsa_working_path" "${_arg#*=}"
@@ -371,7 +367,6 @@ Func_help(){
 	echo "# --ovpns-mssfix			Var_ovpns_mssfix=\"${Var_ovpns_mssfix}\""
 	echo "# --ovpns-ta-path			Var_ovpns_ta_path=\"${Var_ovpns_ta_path}\""
 	echo "# --ovpn-tls-cipher		Var_ovpn_tls_cipher=\"${Var_ovpn_tls_cipher}\""
-	echo "# --easyrsa-examples-path		Var_easyrsa_examples_path=\"${Var_easyrsa_examples_path}\""
 	echo "# --easyrsa-working-path		Var_easyrsa_working_path=\"${Var_easyrsa_working_path}\""
 	echo "# --easyrsa-server-name		Var_easyrsa_server_name=\"${Var_easyrsa_server_name}\""
 	echo "# --easyrsa-key-size		Var_easyrsa_key_size=\"${Var_easyrsa_key_size}\""
@@ -540,13 +535,13 @@ EOF
 	done
 	case "${Var_ovpns_push_route_yn}" in
 		y|Y|yes|Yes|YES)
-			Func_message "# Func_write_openvpn_server_config writing push route [${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}] config to: ${Var_ovpns_config_path}: " '2' '3'
+			Func_message "# Func_write_openvpn_server_config writing push route [${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}] config to: ${Var_ovpns_config_path}" '2' '3'
 			cat >> "${Var_ovpns_config_path}" <<EOF
 push "route ${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}"
 EOF
 		;;
 	esac
-	Func_message "# Func_write_openvpn_server_config writing last few configs to: ${Var_ovpns_config_path}: " '2' '3'
+	Func_message "# Func_write_openvpn_server_config writing last few configs to: ${Var_ovpns_config_path}" '2' '3'
 	cat >> "${Var_ovpns_config_path}" <<EOF
 route ${Var_ovpns_route_ip} ${Var_ovpns_route_netmask}
 cipher ${Var_ovpn_cipher}
@@ -565,16 +560,15 @@ push "block-outside-dns"
 EOF
 	case "${Var_ovpns_auto_start_yn}" in
 		y|Y|yes|Yes|YES)
-			$(which openvpn) -c "${Var_ovpns_config_path}"
+			Func_message "# Func_write_openvpn_server_config running: service openvpn restart" '2' '3'
+			service openvpn restart
 			Func_message "# Func_write_openvpn_server_config reports: $(netstat -plantu | grep -E "${Var_ovpns_listen_port}")" '2' '3'
 		;;
 	esac
 }
 Func_write_easyrsa_vars(){
-	Func_message "# Func_write_easyrsa_vars running: mkdir -p \"${Var_easyrsa_working_path}\"" '2' '3'
-	mkdir -p "${Var_easyrsa_working_path}"
-	Func_message "# Func_write_easyrsa_vars running: cp --recursive \"${Var_easyrsa_examples_path}\" \"${Var_easyrsa_working_path}/\"" '2' '3'
-	cp --recursive "${Var_easyrsa_examples_path}" "${Var_easyrsa_working_path}/"
+	Func_message "# Func_write_easyrsa_vars running: make-cadir \"${Var_easyrsa_working_path}\"" '2' '3'
+	make-cadir "${Var_easyrsa_working_path}"
 	Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
 	cat > "${Var_easyrsa_working_path}/vars" <<EOF
 export EASY_RSA="\$(pwd)"
