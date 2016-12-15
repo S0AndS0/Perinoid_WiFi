@@ -449,7 +449,7 @@ EOF
 		;;
 	esac
 }
-## Write functions to do stuff with assigned variables
+## Functions to do stuff with assigned variables
 Func_apt_check_install_depends(){
 	Func_message "# Func_apt_check_install_depends running: apt-get update -qqq" '2' '3'
 	apt-get update -qqq
@@ -568,7 +568,7 @@ EOF
 }
 Func_write_easyrsa_vars(){
 	Func_message "# Func_write_easyrsa_vars running: $(which make-cadir) \"${Var_easyrsa_working_path}\"" '2' '3'
-	$(which make-cadir) "${Var_easyrsa_working_path}"
+	$(which make-cadir) "${Var_easyrsa_working_path}" || Func_message "# Func_write_easyrsa_vars failed to generate ca dir: ${Var_easyrsa_working_path}" '2' '3' && exit 1
 	if [ -d "${Var_easyrsa_working_path}" ]; then
 		Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
 		cat > "${Var_easyrsa_working_path}/vars" <<EOF
@@ -641,26 +641,31 @@ Func_mkuser_openvpn_server(){
 }
 Func_easyrsa_clients_gen_certs(){
 	_client_name="${1}"
-	_old_pwd="${PWD}"
-	Func_message "# Func_easyrsa_clients_gen_certs running: cd \"${Var_easyrsa_working_path}\"" '3' '4'
-	cd "${Var_easyrsa_working_path}"
-			case "${Var_ovpnc_pass_yn}" in
-				y|Y|yes|Yes|YES)
-					_pass="$(cat /dev/urandom | tr -cd '[:print:]' | head -c"${Var_ovpnc_pass_length}")"
-					echo "${_client_name}" >> "${Var_ovpnc_config_dir}/${_client_name}.pass"
-					echo "${_pass}" >> "${Var_ovpnc_config_dir}/${_client_name}.pass"
-					Func_message "# Func_easyrsa_clients_gen_certs running: tail -n1 \"${Var_ovpnc_config_dir}/${_client_name}.pass\" | ./pkitool --pass ${_client_name}" '3' '4'
-					tail -n1 "${Var_ovpnc_config_dir}/${_client_name}.pass" | ./pkitool --pass ${_client_name}
-				;;
-				*)
-					Func_message "# Func_easyrsa_clients_gen_certs running: ./pkitool ${_client_name}" '3' '4'
-					./pkitool ${_client_name}
-				;;
-			esac
-	Func_message "# Func_easyrsa_clients_gen_certs running: cd \"${_old_pwd}\"" '3' '4'
-	cd "${_old_pwd}"
-	Func_message "# Func_easyrsa_clients_gen_certs running: unset _old_pwd" '3' '4'
-	unset _old_pwd
+	if [ -d "${Var_easyrsa_working_path}" ]; then
+		_old_pwd="${PWD}"
+		Func_message "# Func_easyrsa_clients_gen_certs running: cd \"${Var_easyrsa_working_path}\"" '3' '4'
+		cd "${Var_easyrsa_working_path}"
+				case "${Var_ovpnc_pass_yn}" in
+					y|Y|yes|Yes|YES)
+						_pass="$(cat /dev/urandom | tr -cd '[:print:]' | head -c"${Var_ovpnc_pass_length}")"
+						echo "${_client_name}" >> "${Var_ovpnc_config_dir}/${_client_name}.pass"
+						echo "${_pass}" >> "${Var_ovpnc_config_dir}/${_client_name}.pass"
+						Func_message "# Func_easyrsa_clients_gen_certs running: tail -n1 \"${Var_ovpnc_config_dir}/${_client_name}.pass\" | ./pkitool --pass ${_client_name}" '3' '4'
+						tail -n1 "${Var_ovpnc_config_dir}/${_client_name}.pass" | ./pkitool --pass ${_client_name}
+					;;
+					*)
+						Func_message "# Func_easyrsa_clients_gen_certs running: ./pkitool ${_client_name}" '3' '4'
+						./pkitool ${_client_name}
+					;;
+				esac
+		Func_message "# Func_easyrsa_clients_gen_certs running: cd \"${_old_pwd}\"" '3' '4'
+		cd "${_old_pwd}"
+		Func_message "# Func_easyrsa_clients_gen_certs running: unset _old_pwd" '3' '4'
+		unset _old_pwd
+	else
+		Func_message "# Func_easyrsa_clients_gen_certs cannot find: ${Var_easyrsa_working_path}" '3' '4'
+		exit 1
+	fi
 }
 Func_write_openvpn_ipp_config(){
 	_client_name="${1}"
@@ -680,19 +685,20 @@ EOF
 	fi
 }
 Func_write_openvpn_client_config(){
-	if ! [ -d "${Var_ovpnc_config_dir}" ]; then
-		Func_message "# Func_write_openvpn_client_config running: mkdir -p \"${Var_ovpnc_config_dir}\"" '2' '3'
-		mkdir -p "${Var_ovpnc_config_dir}"
-	fi
-	for _client_name in ${Var_ovpnc_names//,/ }; do
-		if ! [ -f "${Var_ovpnc_config_dir}/${_client_name}.ovpn" ]; then
-			Func_message "# Func_write_openvpn_client_config running: Func_easyrsa_clients_gen_certs \"${_client_name}\"" '2' '3'
-			Func_easyrsa_clients_gen_certs "${_client_name}"
-			Func_message "# Func_write_openvpn_client_config running: Func_write_openvpn_ipp_config \"${_client_name}\"" '2' '3'
-			Func_write_openvpn_ipp_config "${_client_name}"
-			_client_path="${Var_ovpnc_config_dir}/${_client_name}.ovpn"
-			Func_message "# Func_write_openvpn_client_config starting config: ${_client_path}" '2' '3'
-			cat > "${_client_path}" <<EOF
+	if [ -d "${Var_easyrsa_working_path}" ]; then
+		if ! [ -d "${Var_ovpnc_config_dir}" ]; then
+			Func_message "# Func_write_openvpn_client_config running: mkdir -p \"${Var_ovpnc_config_dir}\"" '2' '3'
+			mkdir -p "${Var_ovpnc_config_dir}"
+		fi
+		for _client_name in ${Var_ovpnc_names//,/ }; do
+			if ! [ -f "${Var_ovpnc_config_dir}/${_client_name}.ovpn" ]; then
+				Func_message "# Func_write_openvpn_client_config running: Func_easyrsa_clients_gen_certs \"${_client_name}\"" '2' '3'
+				Func_easyrsa_clients_gen_certs "${_client_name}"
+				Func_message "# Func_write_openvpn_client_config running: Func_write_openvpn_ipp_config \"${_client_name}\"" '2' '3'
+				Func_write_openvpn_ipp_config "${_client_name}"
+				_client_path="${Var_ovpnc_config_dir}/${_client_name}.ovpn"
+				Func_message "# Func_write_openvpn_client_config starting config: ${_client_path}" '2' '3'
+				cat > "${_client_path}" <<EOF
 client
 dev ${Var_ovpn_tun_or_tap:-tun}
 nobind
@@ -713,93 +719,97 @@ comp-lzo
 tls-cipher ${Var_ovpn_tls_cipher}
 block-outside-dns
 EOF
-			if [ ${#Var_ovpnc_win32_tap} != "0" ]; then
-				Func_message "# Func_write_openvpn_client_config appending [dev-node ${Var_ovpnc_win32_tap}] to: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+				if [ ${#Var_ovpnc_win32_tap} != "0" ]; then
+					Func_message "# Func_write_openvpn_client_config appending [dev-node ${Var_ovpnc_win32_tap}] to: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 dev-node ${Var_ovpnc_win32_tap}
 EOF
-			fi
-			for _host_port in ${Var_ovpnc_hosts_ports//,/ }; do
-				_host="${_host_port%%*:}"
-				_port="${_host_port##*:}"
-				Func_message "# Func_write_openvpn_client_config appending [remote ${_host} ${_port}] to: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+				fi
+				for _host_port in ${Var_ovpnc_hosts_ports//,/ }; do
+					_host="${_host_port%%*:}"
+					_port="${_host_port##*:}"
+					Func_message "# Func_write_openvpn_client_config appending [remote ${_host} ${_port}] to: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 remote ${_host} ${_port}
 EOF
-			done
-			Func_message "# Func_write_openvpn_client_config appending [remote-random] & [resolv-retry infinite] to: ${_client_path}" '2' '3'
-			cat >> "${_client_path}" <<EOF
+				done
+				Func_message "# Func_write_openvpn_client_config appending [remote-random] & [resolv-retry infinite] to: ${_client_path}" '2' '3'
+				cat >> "${_client_path}" <<EOF
 remote-random
 resolv-retry infinite
 EOF
-			if [ "${#Var_ovpnc_http_proxies_ports}" != "0" ]; then
-				Func_message "# Func_write_openvpn_client_config appending [http-proxy-retry] to: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+				if [ "${#Var_ovpnc_http_proxies_ports}" != "0" ]; then
+					Func_message "# Func_write_openvpn_client_config appending [http-proxy-retry] to: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 http-proxy-retry
 EOF
-				for _host_port in ${Var_ovpnc_http_proxies_ports//,/ }; do
-					_host="${_host_port%%*:}"
-					_port="${_host_port##*:}"
-					Func_message "# Func_write_openvpn_client_config appending [http-proxy ${_host} ${_port}] to: ${_client_path}" '2' '3'
-					cat >> "${_client_path}" <<EOF
+					for _host_port in ${Var_ovpnc_http_proxies_ports//,/ }; do
+						_host="${_host_port%%*:}"
+						_port="${_host_port##*:}"
+						Func_message "# Func_write_openvpn_client_config appending [http-proxy ${_host} ${_port}] to: ${_client_path}" '2' '3'
+						cat >> "${_client_path}" <<EOF
 http-proxy ${_host} ${_port}
 EOF
-				done
-			fi
-			case "${Var_ovpnc_pass_yn}" in
-				y|Y|yes|Yes|YES)
-					Func_message "# Func_write_openvpn_client_config appending [auth-user-pass \"${_client_name}.pass\"] to: ${_client_path}" '2' '3'
-					cat >> "${_client_path}" <<EOF
+					done
+				fi
+				case "${Var_ovpnc_pass_yn}" in
+					y|Y|yes|Yes|YES)
+						Func_message "# Func_write_openvpn_client_config appending [auth-user-pass \"${_client_name}.pass\"] to: ${_client_path}" '2' '3'
+						cat >> "${_client_path}" <<EOF
 auth-user-pass "${_client_name}.pass"
 EOF
-				;;
-			esac
-			if [ -f "${Var_ovpnc_config_dir}/${_client_name}.crt" ]; then
-				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpnc_config_dir}/${_client_name}.crt] within: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+					;;
+				esac
+				if [ -f "${Var_ovpnc_config_dir}/${_client_name}.crt" ]; then
+					Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpnc_config_dir}/${_client_name}.crt] within: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 <cert>
 EOF
-				cat "${Var_ovpnc_config_dir}/${_client_name}.crt" >> "${_client_path}"
-				cat >> "${_client_path}" <<EOF
+					cat "${Var_ovpnc_config_dir}/${_client_name}.crt" >> "${_client_path}"
+					cat >> "${_client_path}" <<EOF
 </cert>
 EOF
-			fi
-			if [ -f "${Var_ovpnc_config_dir}/${_client_name}.key" ]; then
-				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpnc_config_dir}/${_client_name}.key] within: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+				fi
+				if [ -f "${Var_ovpnc_config_dir}/${_client_name}.key" ]; then
+					Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpnc_config_dir}/${_client_name}.key] within: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 <key>
 EOF
-				cat "${Var_ovpnc_config_dir}/${_client_name}.key" >> "${_client_path}"
-				cat >> "${_client_path}" <<EOF
+					cat "${Var_ovpnc_config_dir}/${_client_name}.key" >> "${_client_path}"
+					cat >> "${_client_path}" <<EOF
 </key>
 EOF
-			fi
-			if [ -f "${Var_ovpns_config_dir}/ca.crt" ]; then
-				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpns_config_dir}/ca.crt] within: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+				fi
+				if [ -f "${Var_ovpns_config_dir}/ca.crt" ]; then
+					Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpns_config_dir}/ca.crt] within: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 <ca>
 EOF
-				cat "${Var_ovpns_config_dir}/ca.crt" >> "${_client_path}"
-				cat >> "${_client_path}" <<EOF
+					cat "${Var_ovpns_config_dir}/ca.crt" >> "${_client_path}"
+					cat >> "${_client_path}" <<EOF
 </ca>
 EOF
-			fi
-			if [ -f "${Var_ovpns_config_dir}/ta.key" ]; then
-				Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpns_config_dir}/ta.key] within: ${_client_path}" '2' '3'
-				cat >> "${_client_path}" <<EOF
+				fi
+				if [ -f "${Var_ovpns_config_dir}/ta.key" ]; then
+					Func_message "# Func_write_openvpn_client_config embeding [${Var_ovpns_config_dir}/ta.key] within: ${_client_path}" '2' '3'
+					cat >> "${_client_path}" <<EOF
 key-direction 1
 <tls-auth>
 EOF
-				cat "${Var_ovpns_config_dir}/ta.key" >> "${_client_path}"
-				cat >> "${_client_path}" <<EOF
+					cat "${Var_ovpns_config_dir}/ta.key" >> "${_client_path}"
+					cat >> "${_client_path}" <<EOF
 </tls-auth>
 EOF
+				fi
+				Func_message "# Func_write_openvpn_client_config NOTICE - files [${_client_path}] & [${_client_name}.pass] (if available) should be transfered to client [${_client_name}] securly to connect to server name [${Var_easyrsa_server_name}]" '2' '3'
+##				End of writing config file for client name
 			fi
-			Func_message "# Func_write_openvpn_client_config NOTICE - files [${_client_path}] & [${_client_name}.pass] (if available) should be transfered to client [${_client_name}] securly to connect to server name [${Var_easyrsa_server_name}]" '2' '3'
-##			End of writing config file for client name
-		fi
-	done
-	Func_message "# Func_write_openvpn_client_config NOTICE - $(ls -hal "${Var_ovpnc_config_dir}")"
+		done
+		Func_message "# Func_write_openvpn_client_config NOTICE - $(ls -hal "${Var_ovpnc_config_dir}")" '2' '3'
+	else
+		Func_message "# Func_write_openvpn_client_config cannot find: ${Var_easyrsa_working_path}" '2' '3'
+		exit 1
+	fi
 }
 ## Do stuff with input and above functions inside bellow function
 Func_main(){
