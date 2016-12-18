@@ -18,7 +18,7 @@ language:
 addons:
  apt:
   sources:
-   - lucid
+   - debian-sid
   packages:
    - easy-rsa
 ## Matrix of steps to preform for tests
