@@ -14,6 +14,13 @@ os:
 ## Settings for language that travis-ci.org will test with
 language:
  - bash
+## Settings for easy-rsa installation
+addons:
+ apt:
+  sources:
+   - precise
+  packages:
+   - easy-rsa
 ## Matrix of steps to preform for tests
 matrix:
  include:
@@ -24,13 +31,6 @@ matrix:
 before_install:
  - chmod +x .travis-ci/before_install.sh
  - .travis-ci/before_install.sh
-## Settings for easy-rsa installation
-addons:
- apt:
-  sources:
-   - debian-sid
-  packages:
-   - easy-rsa
 ## Steps for successful install once dependencies are met.
 #install:
 # - chmod +x 
