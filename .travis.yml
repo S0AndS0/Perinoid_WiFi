@@ -14,6 +14,14 @@ os:
 ## Settings for language that travis-ci.org will test with
 language:
  - bash
+## Settings for easy-rsa installation
+addons:
+ apt:
+  sources:
+   - lucid
+  packages:
+   - easy-rsa
+## Matrix of steps to preform for tests
 matrix:
  include:
  - bash
