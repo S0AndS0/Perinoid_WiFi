@@ -17,8 +17,6 @@ language:
 ## Settings for easy-rsa installation
 addons:
  apt:
-  sources:
-   - precise
   packages:
    - easy-rsa
 ## Matrix of steps to preform for tests
