@@ -19,20 +19,17 @@ if [ -e "${Var_main_script_name}" ]; then
 		echo "# Checking if ${_app} is installed or available"
 		apt-cache policy ${_app} || echo "# Cannot find ${_app}"
 	done
-#	echo "# ${Var_script_name} running: sudo apt-get update -qqq && sudo apt-get install ${Var_main_script_apt_get_depends_list//,/ }"
-#	sudo apt-get update -qqq && sudo apt-get install ${Var_main_script_apt_get_depends_list//,/ }
 	echo "# ${Var_script_name} running: sudo ./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn=\"yes\" --apt-depends-list=\"${Var_main_script_apt_get_depends_list}\""
 	sudo ./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn="yes" --apt-depends-list="${Var_main_script_apt_get_depends_list}"
 	_exit_status=$?
 	Func_check_exit_status "${_exit_status}" "./${Var_main_script_name} --debug-level='9' --apt-check-depends-yn=\"yes\" --apt-depends-list=\"${Var_main_script_apt_get_depends_list}\""
+	echo "# ${Var_script_name} running: sudo /etc/init.d/haveged restart"
+	sudo /etc/init.d/haveged restart
+	_exit_status=$?
+	Func_check_exit_status "${_exit_status}" "sudo /etc/init.d/haveged restart"
 else
 	echo "# ${Var_script_name} could not execute: ${Var_main_script_name}"
 	exit 1
 fi
-#echo "# ${Var_script_name} running: <command>"
-#<command>
-#_exit_status=$?
-#Func_check_exit_status "${_exit_status}" "<command>"
-
 echo "# ${Var_script_name} reports: all checks passed"
 echo "# ${Var_script_name} finished at: $(date -u +%s)"

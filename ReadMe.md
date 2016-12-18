@@ -1,5 +1,7 @@
 # `Parinoid_WiFi.sh`
 
+[![Build Status](https://travis-ci.org/S0AndS0/Perinoid_WiFi.svg?branch=master)](https://travis-ci.org/S0AndS0/Perinoid_WiFi)
+
 > A `Bash` script that writes OpenVPN server or client configuration files and
 > aims to make setup of new servers or clients a simple or automated process.
 
@@ -54,6 +56,8 @@ chmod 754 Paranoid_WiFi.sh
 
 ```
 Var_main_script_apt_get_depends_list="openvpn,easy-rsa,dnsutils"
+## For headless servers with low entropy use the following instead
+#Var_main_script_apt_get_depends_list="openvpn,easy-rsa,dnsutils,haveged"
 ```
 
 ### Command to issue for server only installation

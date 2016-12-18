@@ -597,7 +597,8 @@ Func_make_or_copy_easy_rsa_examples(){
 #			Func_message "# Func_make_or_copy_easy_rsa_examples running: " '3' '4'
 #			cp -R "" "${Var_easyrsa_working_path}"
 		else
-## TO-DO : Add options to clone and/or make easy-rsa from source
+			## TO-DO : Add options to clone and/or make easy-rsa
+			##  from source
 			Func_message "# Func_make_or_copy_easy_rsa_examples running: exit 1" '3' '4'
 			exit 1
 		fi
@@ -1077,6 +1078,8 @@ Func_main_iptables_modder(){
 }
 Func_main_iptables_modder
 EOF
+	## TO-DO : Fix permissions and/or add options for customizing
+	##  permissions of the above file and others writen by this script.
 #	Func_message "# Func_write_iptables_config running: " '2' '3'
 	#Func_message "# Func_write_iptables_config running: " '2' '3'
 }
@@ -1134,9 +1137,8 @@ Func_main(){
 			Func_message "# Func_main skipping: Func_write_iptables_config" '1' '2'
 		;;
 	esac
-	
+	## TO-DO : Add firejail and/or other "sandboxing" like options
 }
 Func_message "# ${Var_script_name} running: Func_main \"\$@\"" '0' '1'
 Func_main "$@"
 Func_message "# ${Var_script_name} finished at: $(date)" '0' '1'
-
