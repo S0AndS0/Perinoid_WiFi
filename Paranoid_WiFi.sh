@@ -76,6 +76,9 @@ Var_ovpnc_pass_length="32"
 ## Variables shared by OpenVPN client and server configs
 Var_ovpn_protocal="udp"
 Var_ovpn_tun_or_tap="tun"
+## Variables for iptables
+Var_iptables_write_config_yn=""
+Var_iptables_config_path="/etc/openvpn/iptables/${Var_easyrsa_server_name}.sh"
 ## Variables for executables
 Var_echo_exec_path="$(which echo)"
 ## Assigne default functions for handling messages,
@@ -134,6 +137,8 @@ Func_check_args(){
 			--easyrsa-key-name|Var_easyrsa_key_name)
 				Func_assign_arg "Var_easyrsa_key_name" "${_arg#*=}"
 			;;
+#Var_iptables_write_config_yn
+#Var_iptables_config_path
 			--log-level|Var_log_level)
 				Func_assign_arg "Var_log_level" "${_arg#*=}"
 			;;
@@ -324,6 +329,8 @@ Func_help(){
 	echo "## Command line options for apt-get automation"
 	echo "# --apt-check-depends-yn		Var_apt_check_depends_yn=\"${Var_apt_check_depends_yn}\""
 	echo "# --apt-depends-list		Var_apt_depends_list=\"${Var_apt_depends_list}\""
+#Var_iptables_write_config_yn
+#Var_iptables_config_path
 	echo "## Command line options for OpenVPN server/client installation/configuration"
 	echo "# --ovpn-auth			Var_ovpn_auth=\"${Var_ovpn_auth}\""
 	echo "# --ovpn-cipher			Var_ovpn_cipher=\"${Var_ovpn_cipher}\""
@@ -811,6 +818,232 @@ EOF
 		exit 1
 	fi
 }
+Func_write_iptables_config(){
+	if ! [ -d "${Var_iptables_config_path%/*}" ]; then
+		Func_message "# Func_write_iptables_config running: mkdir -p \"${Var_iptables_config_path%/*}\"" '2' '3'
+		mkdir -p "${Var_iptables_config_path%/*}"
+	fi
+	if [ -f "${Var_iptables_config_path}" ]; then
+		_date="$(date -u +%s)"
+		Func_message "# Func_write_iptables_config running: mv \"${Var_iptables_config_path}\" \"${Var_iptables_config_path}.${_date}\"" '2' '3'
+		mv "${Var_iptables_config_path}" "${Var_iptables_config_path}.${_date}"
+	fi
+	Func_message "# Func_write_iptables_config writing: ${Var_iptables_config_path}" '2' '3'
+	cat >> "${Var_iptables_config_path}" <<EOF
+#!/usr/bin/env bash
+Var_script_name="\${0##*/}"
+Var_upOr_down="\${1:-down}"
+Var_server_iface="\$(ip addr show | awk '/eth/{gsub(":",""); print \$2}' | head -n1)"
+Var_server_IPaddr="\$(ip addr show \${Var_server_iface} | awk '/inet/{print \$2}' | head -n1 | awk '{gsub("\."," "); print \$1"."\$2"."\$3".0/24"}')"
+Var_openvpn_conf="\${2:-/etc/openvpn/server.conf}"
+Var_bridge_iface="\$(ip addr show | awk '/tun/{gsub(":",""); print \$2}' | head -n1)"
+Var_bridge_IPaddr="\$(ip addr show \${Var_bridge_iface} | awk '/inet/{print \$2}' | head -n1 | awk '{gsub("\."," "); print \$1"."\$2"."\$3".0/24"}')"
+Var_server_port="\$(grep -vE '#' \${Var_openvpn_conf} | awk '/port/{print \$2}')"
+Var_server_protocol="\$(grep -vE '#' \${Var_openvpn_conf} | awk '/proto/{print \$2}')"
+Var_allow_clients_on_nat="${Var_ovpns_push_route_yn}"
+Var_iptables_input_policy="DROP"
+Var_iptables_forward_policy="DROP"
+Var_iptables_output_policy="ACCEPT"
+#Var_allowed_output_ports="${Var_server_port}"
+##########################################################################
+##########################################################################
+## Writen for the following firejail issues 				##
+##	https://github.com/netblue30/firejail/issues/214		##
+##	https://github.com/netblue30/firejail/issues/59 		##
+## Source of iptables magics 						##
+##	https://fedoraproject.org/wiki/Openvpn 				##
+##	http://www.ellipsix.net/geninfo/firewall/iptables/index.html	##
+##########################################################################
+##########################################################################
+###	iptables referance (cheat-sheet)
+## iptables comment
+#-m comment --comment "Comment text upto 256 characters"
+## iptables make new custom chain with given name
+#-N <chain-name-upto-30-characters>
+## Delete chain-name rules
+#-F chain-name
+## Delete chain-name
+#-X chain-name
+## iptables append rule to INPUT
+#-A INPUT -m comment --comment "some comment" -j DROP
+## iptables delete rule on INPUT
+#-D INPUT -m comment --comment "some comment" -j DROP
+## iptables match protocal; icpm, udp or tcp
+# -p ${Var_server_protocol}
+Func_check_forward_kernel_policy(){
+	case "\$(cat /proc/sys/net/ipv4/ip_forward)" in
+		1)
+			case "${Var_upOr_down:-down}" in
+				up)
+					echo "Forwarding already enabled"
+					export Var_redisable_forward="no"
+				;;
+				*)
+					case "${Var_redisable_forward:-yes}" in
+						no)
+							echo -e "#\tNotice: not redisabling forwarding"
+						;;
+						*)
+							echo 'echo "0" | tee /proc/sys/net/ipv4/ip_forward'
+							echo "0" | tee /proc/sys/net/ipv4/ip_forward
+						;;
+					esac
+				;;
+			esac
+		;;
+		0)
+			case "${Var_upOr_down:-down}" in
+				up)
+					echo 'echo "1" | tee /proc/sys/net/ipv4/ip_forward'
+					echo "1" | tee /proc/sys/net/ipv4/ip_forward
+				;;
+				*)
+					echo -e "#\tNotice: forwarding already disabled"
+				;;
+			esac
+		;;
+	esac
+}
+Func_iptables_forwarding_rules_up_or_down(){
+	case "\${Var_upOr_down:-down}" in
+		up)
+			_A_or_D="A"
+		*)
+			_A_or_D="D"
+		;;
+	esac
+	iptables -\${_A_or_D} INPUT -s 127.0.0.0/8 -i ! lo -j DROP
+	iptables -\${_A_or_D} INPUT -d 127.0.0.0/8 -i ! lo -j DROP
+	iptables -\${_A_or_D} OUTPUT -s 127.0.0.0/8 -i ! lo -j DROP
+	iptables -\${_A_or_D} OUTPUT -d 127.0.0.0/8 -i ! lo -j DROP
+	iptables -\${_A_or_D} INPUT -i lo -j ACCEPT
+	iptables -\${_A_or_D} OUTPUT -i lo -j ACCEPT
+	iptables -\${_A_or_D} INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	iptables -\${_A_or_D} INPUT -i \${Var_server_iface} -p \${Var_server_protocol:-udp} --dport \${Var_server_port:-1194} -m conntrack --ctstate NEW -j ACCEPT
+	iptables -\${_A_or_D} FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	case "\${Var_allow_clients_on_nat:-no}" in
+		yes)
+			iptables -\${_A_or_D} FORWARD -i \${Var_bridge_iface:-tun0} -o \${Var_server_iface} -s \${Var_bridge_IPaddr} -d \${Var_server_IPaddr} -m conntrack --ctstate NEW -j ACCEPT
+		;;
+		*)
+			iptables -\${_A_or_D} FORWARD -i \${Var_bridge_iface:-tun0} -o \${Var_server_iface} -s \${Var_bridge_IPaddr} -d \${Var_server_IPaddr} -m conntrack --ctstate NEW -j DROP
+		;;
+	esac
+	if [ "\${#Var_allowed_output_ports}" != "0" ]; then
+		for _port in \${Var_allowed_output_ports//,/ }; do
+			iptables -\${_A_or_D} FORWARD -i \${Var_bridge_iface:-tun0} -o \${Var_server_iface} --dport \${_port} -m conntrack --ctstate NEW -j ACCEPT
+		done
+	else
+		iptables -\${_A_or_D} FORWARD -i \${Var_bridge_iface:-tun0} -o \${Var_server_iface} -s \${Var_bridge_IPaddr} -m conntrack --ctstate NEW -j ACCEPT
+	fi
+	iptables -t nat -\${_A_or_D} POSTROUTING -o \${Var_server_iface} -s \${Var_bridge_IPaddr} -j MASQUERADE
+	if [ "\${#Var_allowed_output_ports}" != "0" ]; then
+		iptables -\${_A_or_D} OUTPUT -o \${Var_server_iface} --sport \${Var_server_port} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+		for _port in \${Var_allowed_output_ports//,/ }; do
+			iptables -\${_A_or_D} OUTPUT -o \${Var_server_iface} --dport \${_port} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+		done
+	else
+		iptables -\${_A_or_D} OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+		iptables -\${_A_or_D} OUTPUT -o \${Var_server_iface} -m conntrack --ctstate NEW -j ACCEPT
+	fi
+}
+Func_iptables_policy_rules_up_or_down(){
+	case "\${Var_iptables_input_policy:-DROP}" in
+		drop|DROP)
+			case "\${Var_upOr_down}" in
+				up)
+					iptables -P INPUT DROP
+				;;
+				*)
+					iptables -P INPUT ACCEPT
+				;;
+			esac
+		;;
+		accept|ACCEPT)
+			case "\${Var_upOr_down}" in
+				up)
+					iptables -P INPUT ACCEPT
+				;;
+				*)
+					iptables -P INPUT ACCEPT
+				;;
+			esac
+		;;
+		*)
+			echo "Did not understand \${Var_iptables_input_policy:-DROP}"
+		;;
+	esac
+	case "\${Var_iptables_forward_policy:-DROP}" in
+		drop|DROP)
+			case "\${Var_upOr_down}" in
+				up)
+					iptables -P FORWARD DROP
+				;;
+				*)
+					iptables -P FORWARD ACCEPT
+				;;
+			esac
+		;;
+		accept|ACCEPT)
+			case "\${Var_upOr_down}" in
+				up)
+					iptables -P FORWARD ACCEPT
+				;;
+				*)
+					iptables -P FORWARD ACCEPT
+				;;
+			esac
+		;;
+		*)
+			echo "Did not understand \${Var_default_forward_policy:-DROP}"
+		;;
+	esac
+	case "\${Var_iptables_output_policy:-ACCEPT}" in
+		drop|DROP)
+			case "\${Var_upOr_down}" in
+				up)
+					iptables -P OUTPUT DROP
+				;;
+				*)
+					iptables -P OUTPUT ACCEPT
+				;;
+			esac
+		;;
+		accept|ACCEPT)
+			case "\${Var_upOr_down}" in
+				up)
+					iptables -P OUTPUT ACCEPT
+				;;
+				*)
+					iptables -P OUTPUT ACCEPT
+				;;
+			esac
+		;;
+		*)
+			echo "Did not understand \${Var_iptables_output_policy:-ACCEPT}"
+		;;
+	esac
+}
+Func_main_iptables_modder(){
+	case "\${Var_upOr_down}" in
+		up|down)
+			Func_check_forward_kernel_policy
+			Func_iptables_forwarding_rules_up_or_down
+			Func_iptables_policy_rules_up_or_down
+		;;
+		*)
+			echo "# Error, unreconized input."
+			echo "# \${Var_script_name} up"
+			echo "# \${Var_script_name} down"
+			exit 1
+		;;
+	esac
+}
+Func_main_iptables_modder
+EOF
+#	Func_message "# Func_write_iptables_config running: " '2' '3'
+	#Func_message "# Func_write_iptables_config running: " '2' '3'
+}
 ## Do stuff with input and above functions inside bellow function
 Func_main(){
 	_input=( "$@" )
@@ -856,8 +1089,18 @@ Func_main(){
 			Func_message "# Func_main skipping: Func_write_openvpn_client_config" '1' '2'
 		;;
 	esac
+	case "${Var_iptables_write_config_yn}" in
+		y|Y|yes|Yes|YES)
+			Func_message "# Func_main running: Func_write_iptables_config" '1' '2'
+			Func_write_iptables_config
+		;;
+		*)
+			Func_message "# Func_main skipping: Func_write_iptables_config" '1' '2'
+		;;
+	esac
 	
 }
 Func_message "# ${Var_script_name} running: Func_main \"\$@\"" '0' '1'
 Func_main "$@"
 Func_message "# ${Var_script_name} finished at: $(date)" '0' '1'
+

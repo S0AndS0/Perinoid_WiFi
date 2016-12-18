@@ -1,4 +1,4 @@
-# Parinoid_WiFi
+# `Parinoid_WiFi.sh`
 
 > A `Bash` script that writes OpenVPN server or client configuration files and
 > aims to make setup of new servers or clients a simple or automated process.
@@ -37,7 +37,39 @@ git fetch https://github.com/S0AndS0/Perinoid_WiFi
 #git fetch --all
 ```
 
-## How to setup a new server
+> Fix permissions of main script with the following two commands
+
+```
+chown $(id -un):$(id -gn) Paranoid_WiFi.sh
+chmod 754 Paranoid_WiFi.sh
+```
+
+## How to install dependancies for server
+
+> The following steps nead only be preformed once for a *fresh* OpenVPN server
+> installation, such as a VPS or localy networked device; nearly any Debian
+> based distrobution maybe used for this portion.
+
+### Variables for server only installation
+
+```
+Var_main_script_apt_get_depends_list="openvpn,easy-rsa,dnsutils"
+```
+
+### Command to issue for server only installation
+
+```
+sudo ./Paranoid_WiFi.sh\
+ --debug-level='9'\
+ --apt-check-depends-yn="yes"\
+ --apt-depends-list="${Var_main_script_apt_get_depends_list}"
+```
+
+> Find examples of above variables and usage with script call bellow within the
+> [`before_install.sh`](.travis-ci/before_install.sh)
+> script used by Travis-CI for automaticly build testing this project.
+
+## How to setup new configs for server
 
 > The following steps maybe used to setup a new OpenVPN server instance on nearly
 > any Debian based distrobution.
@@ -54,7 +86,7 @@ Var_listen_port="9988"
 > [`script_configure_server_only.sh`](.travis-ci/script_configure_server_only.sh)
 > script used by Travis-CI for automaticly build testing this project.
 
-### Command to issue for server only setup
+### Command to issue for server only configuration
 
 ```
 sudo ./Paranoid_WiFi.sh\
@@ -87,7 +119,7 @@ Var_client_users_list="alice,bob,jack,etc..."
 ```
 
 > Find examples of above variables and usage with script call bellow within the
-> [script_configure_clients_only.sh](.travis-ci/script_configure_clients_only.sh)
+> [`script_configure_clients_only.sh`](.travis-ci/script_configure_clients_only.sh)
 > script used by Travis-CI for automaticly build testing this project.
 
 ```
