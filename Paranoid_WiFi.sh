@@ -137,8 +137,12 @@ Func_check_args(){
 			--easyrsa-key-name|Var_easyrsa_key_name)
 				Func_assign_arg "Var_easyrsa_key_name" "${_arg#*=}"
 			;;
-#Var_iptables_write_config_yn
-#Var_iptables_config_path
+			--iptables-write-config-yn|Var_iptables_write_config_yn)
+				Func_assign_arg "Var_iptables_write_config_yn" "${_arg#*=}"
+			;;
+			--iptables-config-path|Var_iptables_config_path)
+				Func_assign_arg "Var_iptables_config_path" "${_arg#*=}"
+			;;
 			--log-level|Var_log_level)
 				Func_assign_arg "Var_log_level" "${_arg#*=}"
 			;;
@@ -329,8 +333,8 @@ Func_help(){
 	echo "## Command line options for apt-get automation"
 	echo "# --apt-check-depends-yn		Var_apt_check_depends_yn=\"${Var_apt_check_depends_yn}\""
 	echo "# --apt-depends-list		Var_apt_depends_list=\"${Var_apt_depends_list}\""
-#Var_iptables_write_config_yn
-#Var_iptables_config_path
+	echo "# --iptables-write-config-yn	Var_iptables_write_config_yn=\"${Var_iptables_write_config_yn}\""
+	echo "# --iptables-config-path		Var_iptables_config_path=\"${Var_iptables_config_path}\""
 	echo "## Command line options for OpenVPN server/client installation/configuration"
 	echo "# --ovpn-auth			Var_ovpn_auth=\"${Var_ovpn_auth}\""
 	echo "# --ovpn-cipher			Var_ovpn_cipher=\"${Var_ovpn_cipher}\""
@@ -573,9 +577,41 @@ EOF
 		;;
 	esac
 }
+Func_make_or_copy_easy_rsa_examples(){
+	Func_message "# Func_make_or_copy_easy_rsa_examples running: $(which make-cadir) \"${Var_easyrsa_working_path}\"" '3' '4'
+	$(which make-cadir) "${Var_easyrsa_working_path}"
+	if [ "$?" != "0" ]; then
+		Func_message "# Func_make_or_copy_easy_rsa_examples failed to generate ca dir [${Var_easyrsa_working_path}] with [$(which make-cadir)] command" '3' '4'
+		if ! [ -d "${Var_easyrsa_working_path}" ]; then
+			mkdir -p "${Var_easyrsa_working_path}"
+		fi
+		if [ -d "/usr/share/easy-rsa" ]; then
+			Func_message "# Func_make_or_copy_easy_rsa_examples running: cp -R \"/usr/share/easy-rsa/*\" \"${Var_easyrsa_working_path}\"" '3' '4'
+			cp -R "/usr/share/easy-rsa/*" "${Var_easyrsa_working_path}"
+		elif [ -d "/usr/share/doc/openvpn/examples/easy-rsa/2.0" ]; then
+			Func_message "# Func_make_or_copy_easy_rsa_examples running: cp -R \"/usr/share/doc/openvpn/examples/easy-rsa/2.0/*\" \"${Var_easyrsa_working_path}\"" '3' '4'
+			cp -R "/usr/share/doc/openvpn/examples/easy-rsa/2.0/*" "${Var_easyrsa_working_path}"
+## Add other directory matching if easy-rsa examples live elsewhere
+##  using bellow commented out section as a template
+#		elif [ -d "" ]; then
+#			Func_message "# Func_make_or_copy_easy_rsa_examples running: " '3' '4'
+#			cp -R "" "${Var_easyrsa_working_path}"
+		else
+## TO-DO : Add options to clone and/or make easy-rsa from source
+			Func_message "# Func_make_or_copy_easy_rsa_examples running: exit 1" '3' '4'
+			exit 1
+		fi
+	else
+			Func_message "# Func_make_or_copy_easy_rsa_examples passing control back to: Func_write_easyrsa_vars" '3' '4'
+	fi
+}
 Func_write_easyrsa_vars(){
-	Func_message "# Func_write_easyrsa_vars running: $(which make-cadir) \"${Var_easyrsa_working_path}\"" '2' '3'
-	$(which make-cadir) "${Var_easyrsa_working_path}" || Func_message "# Func_write_easyrsa_vars failed to generate ca dir: ${Var_easyrsa_working_path}" '2' '3' && exit 1
+	Func_message "# Func_write_easyrsa_vars running: Func_make_or_copy_easy_rsa_examples" '2' '3'
+	Func_make_or_copy_easy_rsa_examples
+	if [ "$?" != "0" ]; then
+		Func_message "# Func_write_easyrsa_vars running: exit 1" '2' '3'
+		exit 1
+	fi
 	if [ -d "${Var_easyrsa_working_path}" ]; then
 		Func_message "# Func_write_easyrsa_vars writing: ${Var_easyrsa_working_path}/vars" '2' '3'
 		cat > "${Var_easyrsa_working_path}/vars" <<EOF
