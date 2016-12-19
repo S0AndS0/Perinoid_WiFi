@@ -656,6 +656,10 @@ Func_easyrsa_server_gen_certs(){
 		./pkitool --initca
 		Func_message "# Func_easyrsa_server_gen_certs running: ./pkitool --server ${Var_easyrsa_server_name}" '2' '3'
 		./pkitool --server ${Var_easyrsa_server_name}
+		Func_message "# Func_easyrsa_server_gen_certs running: ls -hal \"${Var_easyrsa_working_path}\""
+		ls -hal "${Var_easyrsa_working_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: ls -hal \"${Var_easyrsa_working_path}/keys\""
+		ls -hal "${Var_easyrsa_working_path}/keys"
 		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/ca.cert\" \"${Var_ovpns_ca_path}\"" '2' '3'
 		cp "${Var_easyrsa_working_path}/keys/ca.cert" "${Var_ovpns_ca_path}"
 		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.cert\" \"${Var_ovpns_cert_path}\"" '2' '3'
