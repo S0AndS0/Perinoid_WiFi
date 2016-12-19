@@ -641,6 +641,22 @@ EOF
 		exit 1
 	fi
 }
+Func_easyrsa_server_copy_certs(){
+	_source_cert_path="${1}"
+	_destination_cert_path="${2}"
+	_destination_cert_dir="${_destination_cert_path%/*}"
+	if [ -f "${_source_cert_path}" ]; then
+		if ! [ -d "${_destination_cert_dir}" ]; then
+			Func_message "# Func_easyrsa_server_copy_certs running: mkdir -p \"${_destination_cert_dir}\"" '3' '4'
+			mkdir -p "${_destination_cert_dir}"
+		fi
+		Func_message "# Func_easyrsa_server_copy_certs running: cp \"${_source_cert_path}\" \"${_destination_cert_path}\"" '3' '4'
+		cp "${_source_cert_path}" "${_destination_cert_path}"
+	else
+		Func_message "# Func_easyrsa_server_copy_certs running: exit 1" '3' '4'
+		exit 1
+	fi
+}
 Func_easyrsa_server_gen_certs(){
 	if [ -d "${Var_easyrsa_working_path}" ]; then
 		_old_pwd="${PWD}"
@@ -660,22 +676,16 @@ Func_easyrsa_server_gen_certs(){
 		cd "${Var_easyrsa_working_path}/keys"
 		Func_message "# Func_easyrsa_server_gen_certs running: openvpn --genkey --secret ta.key" '2' '3'
 		openvpn --genkey --secret ta.key
-		Func_message "# Func_easyrsa_server_gen_certs running: ls -hal \"${Var_easyrsa_working_path}/keys\""
-		ls -hal "${Var_easyrsa_working_path}/keys"
-		if ! [ -d "${Var_ovpns_cert_path}" ]; then
-			Func_message "# Func_easyrsa_server_gen_certs running: mkdir -p \"${Var_ovpns_cert_path}\""
-			mkdir -p "${Var_ovpns_cert_path}"
-		fi
-		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/ca.crt\" \"${Var_ovpns_ca_path}\"" '2' '3'
-		cp "${Var_easyrsa_working_path}/keys/ca.crt" "${Var_ovpns_ca_path}"
-		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.crt\" \"${Var_ovpns_cert_path}\"" '2' '3'
-		cp "${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.crt" "${Var_ovpns_cert_path}"
-		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.key\" \"${Var_ovpns_key_path}\"" '2' '3'
-		cp "${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.key" "${Var_ovpns_key_path}"
-		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/dh${Var_easyrsa_key_size}.pem\" \"${Var_ovpns_dh_path}\"" '2' '3'
-		cp "${Var_easyrsa_working_path}/keys/dh${Var_easyrsa_key_size}.pem" "${Var_ovpns_dh_path}"
-		Func_message "# Func_easyrsa_server_gen_certs running: cp \"${Var_easyrsa_working_path}/keys/ta.key\" \"${Var_ovpns_ta_path}\"" '2' '3'
-		cp "${Var_easyrsa_working_path}/keys/ta.key" "${Var_ovpns_ta_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: Func_easyrsa_server_copy_certs \"${Var_easyrsa_working_path}/keys/ca.crt\" \"${Var_ovpns_ca_path}\"" '2' '3'
+		Func_easyrsa_server_copy_certs "${Var_easyrsa_working_path}/keys/ca.crt" "${Var_ovpns_ca_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: Func_easyrsa_server_copy_certs \"${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.crt\" \"${Var_ovpns_cert_path}\"" '2' '3'
+		Func_easyrsa_server_copy_certs "${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.crt" "${Var_ovpns_cert_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: Func_easyrsa_server_copy_certs \"${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.key\" \"${Var_ovpns_key_path}\"" '2' '3'
+		Func_easyrsa_server_copy_certs "${Var_easyrsa_working_path}/keys/${Var_easyrsa_server_name}.key" "${Var_ovpns_key_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: Func_easyrsa_server_copy_certs \"${Var_easyrsa_working_path}/keys/dh${Var_easyrsa_key_size}.pem\" \"${Var_ovpns_dh_path}\"" '2' '3'
+		Func_easyrsa_server_copy_certs "${Var_easyrsa_working_path}/keys/dh${Var_easyrsa_key_size}.pem" "${Var_ovpns_dh_path}"
+		Func_message "# Func_easyrsa_server_gen_certs running: Func_easyrsa_server_copy_certs \"${Var_easyrsa_working_path}/keys/ta.key\" \"${Var_ovpns_ta_path}\"" '2' '3'
+		Func_easyrsa_server_copy_certs "${Var_easyrsa_working_path}/keys/ta.key" "${Var_ovpns_ta_path}"
 		Func_message "# Func_easyrsa_server_gen_certs running: cd \"${_old_pwd}\"" '2' '3'
 		cd "${_old_pwd}"
 		Func_message "# Func_easyrsa_server_gen_certs running: unset _old_pwd" '2' '3'
