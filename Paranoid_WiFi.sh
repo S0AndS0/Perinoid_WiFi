@@ -926,13 +926,13 @@ Var_iptables_output_policy="ACCEPT"
 Func_check_forward_kernel_policy(){
 	case "\$(cat /proc/sys/net/ipv4/ip_forward)" in
 		1)
-			case "${Var_upOr_down:-down}" in
+			case "\${Var_upOr_down:-down}" in
 				up)
 					echo "Forwarding already enabled"
 					export Var_redisable_forward="no"
 				;;
 				*)
-					case "${Var_redisable_forward:-yes}" in
+					case "\${Var_redisable_forward:-yes}" in
 						no)
 							echo -e "#\tNotice: not redisabling forwarding"
 						;;
@@ -945,7 +945,7 @@ Func_check_forward_kernel_policy(){
 			esac
 		;;
 		0)
-			case "${Var_upOr_down:-down}" in
+			case "\${Var_upOr_down:-down}" in
 				up)
 					echo 'echo "1" | tee /proc/sys/net/ipv4/ip_forward'
 					echo "1" | tee /proc/sys/net/ipv4/ip_forward
