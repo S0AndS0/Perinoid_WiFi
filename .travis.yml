@@ -26,17 +26,16 @@ matrix:
  include:
  - bash
 ## Custom setup prior to testing project, install dependencies & configure
-##  The first installs dependancies via apt-get and uses sudo/root level
-##  permissions, this should be the only build script that requires them.
+##  - Run installation of VPS dependancies, minus easy-rsa, because Travis-CI
+##  builds needed a bit of manual assistance.
 before_install:
  - chmod +x .travis-ci/before_install.sh
  - .travis-ci/before_install.sh
+## Steps for successful installing additional dependencies
+##  - Run installation of easy-rsa from deb file provided by Debian mirror
+install:
  - chmod +x .travis-ci/install_easy_rsa.sh
  - .travis-ci/install_easy_rsa.sh
-## Steps for successful install once dependencies are met.
-#install:
-# - chmod +x 
-# - 
 ## Steps to complete prior to running further tests.
 #before_script:
 # - chmod +x
@@ -50,9 +49,11 @@ script:
  - chmod +x .travis-ci/script_configure_clients_only.sh
  - .travis-ci/script_configure_clients_only.sh
 ## Setps to complete after success or falure
-#after_success:
-# - chmod u+x 
-# - 
+##  - Run tests of if custom iptables script for server are properly assigning
+##  values and properly escaping others.
+after_success:
+ - chmod u+x .travis-ci/script_configure_iptables_only.sh
+ - .travis-ci/script_configure_iptables_only.sh
 #after_failure:
 ## Steps to run for deployment of build if any
 #before_deploy:
@@ -62,5 +63,3 @@ script:
 #after_script:
 ## Note above tricks for chmoding the scripts prior to execution where found
 ##  at: http://stackoverflow.com/a/33820642/2632107
-#.travis-ci/script_configure_clients_only.sh
-#.travis-ci/script_configure_server_only.sh

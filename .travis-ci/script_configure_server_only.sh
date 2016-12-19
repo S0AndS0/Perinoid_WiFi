@@ -15,10 +15,5 @@ else
 	echo "# ${Var_script_name} could not execute: ${Var_main_script_name}"
 	exit 1
 fi
-#echo "# ${Var_script_name} running: <command>"
-#<command>
-#_exit_status=$?
-#Func_check_exit_status "${_exit_status}" "<command>"
-
 echo "# ${Var_script_name} reports: all checks passed"
 echo "# ${Var_script_name} finished at: $(date -u +%s)"
